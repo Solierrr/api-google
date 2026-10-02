@@ -4,7 +4,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import address, geo, health, i18n, solar
+from app.api.routers import address, calendar, geo, health, i18n, solar
 from app.config import WebSettings, get_settings
 from app.exceptions.handlers import register_exception_handlers
 from app.infrastructure.http.google_http_client import GoogleHttpClient
@@ -22,6 +22,8 @@ from app.version import VERSION
 # Base URL por capability Google - chave usada em app.api.dependencies.get_http_client(capability)
 _GOOGLE_BASE_URLS = {
     "address_validation": "https://addressvalidation.googleapis.com",
+    "calendar": "https://www.googleapis.com",
+    "calendar_oauth": "https://oauth2.googleapis.com",
     "geocoding": "https://maps.googleapis.com",
     "places": "https://places.googleapis.com",
     "solar": "https://solar.googleapis.com",
@@ -111,6 +113,7 @@ register_exception_handlers(app)
 app.include_router(health.router)
 app.include_router(address.router)
 app.include_router(address.internal_router)
+app.include_router(calendar.router)
 app.include_router(solar.router)
 app.include_router(geo.router)
 app.include_router(i18n.router)
