@@ -12,7 +12,8 @@ Este repositório é Python (FastAPI). O fluxo local padrão: clonar, instalar d
 
 - **Python 3.14+ instalado localmente** (`pyproject.toml`, `requires-python = ">=3.14"`).
 - **Chaves de API**, o `.env.example` lista `GOOGLE_KEY_MAPS`/`GOOGLE_KEY_TRANSLATION`/`GOOGLE_CALENDAR_OAUTH_*` vazias — em produção elas vêm do [Infisical](https://infisical.com), localmente precisam ser preenchidas num `.env` próprio.
-- **`api-auth` rodando** (ou apontado via `AUTH_BASE_URL`/`JWT_JWKS_URL`) só quando a autenticação e o Calendar forem usados; nenhuma capability atual grava em outro serviço.
+- **`api-auth` rodando** (ou apontado via `JWT_JWKS_URL`) para chamar `/v1/address` e `/v1/geo`, que exigem o JWT do usuário; nenhuma capability atual grava em outro serviço.
+- **Chaves de serviço**, `SERVICE_KEY_API_CORE` e `SERVICE_KEY_AI_GEOGRAPHIC` (mínimo 32 caracteres) para chamar as rotas `/internal` com `X-Service-Key`; vazias, o chamador é recusado.
 
 ## Instalação do Projeto
 
@@ -49,11 +50,21 @@ copy .env.example .env
 uvicorn app.main:app --reload
 ```
 
+Com o serviço no ar, o Swagger fica em `http://localhost:8000/docs` e o contrato em `/openapi.json` (`DOCS_ENABLED=false` desliga os dois). Origens do CORS em `CORS_ALLOWED_ORIGINS`.
+
 ### Testes
 
 ```Comando de teste
 pytest tests --cov=app
 ```
+
+### Contrato OpenAPI
+
+```Comando de exportação
+make openapi
+```
+
+Gera o `openapi.yaml` da raiz, com as rotas `/internal`, sem precisar de `.env`. O CI falha se o arquivo versionado não bater com o código.
 
 ### Subindo via Docker
 

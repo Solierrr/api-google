@@ -31,7 +31,9 @@ O `google-registry` é o serviço central de integração com APIs do Google da 
 - **Capability `solar`**, viabilidade solar de um telhado via Solar API, incluindo os dados do painel de referência.
 - **Capability `i18n`**, detecção de idioma + tradução (Cloud Translation API) de campos de texto para os outros dois entre `en`/`es`/`pt`.
 - **Capability `geo`**, fuso horário por coordenada, calculado localmente.
-- **Autenticação**, JWT RS256 de usuário validado via JWKS do `api-auth` (`app/infrastructure/auth`); ainda não aplicado nos endpoints.
+- **Autenticação**, JWT RS256 de usuário (JWKS do `api-auth`) nas rotas `/v1` e `X-Service-Key` do serviço chamador nas rotas `/internal`.
+- **Contrato**, Swagger em `/docs`, contrato em `/openapi.json` e `openapi.yaml` exportado por `make openapi`; erros em `application/problem+json`.
+- **Saúde**, `/health` (vivo, com a versão) e `/ready` (pronto).
 - **Observabilidade**, logging/tracing/metrics via OpenTelemetry.
 - **Licença Apache 2.0**.
 
