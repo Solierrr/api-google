@@ -11,6 +11,7 @@ from app.infrastructure.http.internal_http_client import InternalHttpClient
 from app.infrastructure.observability.logging import attach_otel_to_uvicorn, configure_logging
 from app.infrastructure.observability.metrics import configure_metrics
 from app.infrastructure.observability.tracing import configure_tracing, instrument_fastapi
+from app.version import VERSION
 
 # Base URL por capability Google - chave usada em app.api.dependencies.get_http_client(capability)
 _GOOGLE_BASE_URLS = {
@@ -46,7 +47,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await client.aclose()
 
 
-app = FastAPI(title="google-registry", lifespan=_lifespan)
+app = FastAPI(title="google-registry", version=VERSION, lifespan=_lifespan)
 
 instrument_fastapi(app)
 register_exception_handlers(app)
