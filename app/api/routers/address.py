@@ -150,7 +150,9 @@ async def validate_address(
 
 
 @router.post("/resolve", summary="Resolve o endereço final de um lugar escolhido ou de um texto")
-async def resolve_address(request: ResolveRequest, service: Annotated[AddressService, Depends(_get_service)]) -> ResolveResponse:
+async def resolve_address(
+    request: ResolveRequest, service: Annotated[AddressService, Depends(_get_service)]
+) -> ResolveResponse:
     """Devolve o endereço estruturado, as coordenadas e a validação em uma só chamada.
 
     Informe `place_id` (lugar escolhido nas sugestões) ou `query` (texto livre), nunca os dois.

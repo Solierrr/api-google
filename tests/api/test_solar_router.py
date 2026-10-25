@@ -37,4 +37,4 @@ def test_roof_viability_returns_404_without_coverage(client):
     response = client.get("/v1/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6})
 
     assert response.status_code == 404
-    assert response.json()["code"] == "GoogleNotFoundException"
+    assert response.json()["errorCode"] == "NOT_FOUND"

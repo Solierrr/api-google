@@ -37,4 +37,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Retorna a instância única de `Settings` para o processo atual"""
     return Settings()
-
