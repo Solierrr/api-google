@@ -3,7 +3,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
-from app.api.routers import address, geo, i18n, solar
+from app.api.routers import address, geo, health, i18n, solar
 from app.config import get_settings
 from app.exceptions.handlers import register_exception_handlers
 from app.infrastructure.http.google_http_client import GoogleHttpClient
@@ -52,13 +52,8 @@ app = FastAPI(title="google-registry", version=VERSION, lifespan=_lifespan)
 instrument_fastapi(app)
 register_exception_handlers(app)
 
+app.include_router(health.router)
 app.include_router(address.router)
 app.include_router(solar.router)
 app.include_router(geo.router)
 app.include_router(i18n.router)
-
-
-@app.get("/health", tags=["health"])
-async def health() -> dict[str, str]:
-    """Healthcheck simples, sem dependências externas"""
-    return {"status": "ok"}
