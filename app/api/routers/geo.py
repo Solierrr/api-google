@@ -3,11 +3,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.api.responses import error_responses
 from app.application.geo.service import GeoService
+from app.infrastructure.auth.bearer_auth import require_authenticated_user
 from app.infrastructure.geo.timezone import TzfpyTimezoneFinder
 from app.schemas.geo import TimezoneResponse
 
-router = APIRouter(prefix="/v1/geo", tags=["geo"])
+router = APIRouter(prefix="/v1/geo", tags=["Geografia"], dependencies=[Depends(require_authenticated_user)])
 
 
 def _get_service() -> GeoService:
@@ -15,7 +17,14 @@ def _get_service() -> GeoService:
     return GeoService(TzfpyTimezoneFinder())
 
 
-@router.get("/timezone", summary="Fuso horário de uma coordenada")
+@router.get(
+    "/timezone",
+    summary="Fuso horário de uma coordenada",
+    operation_id="getTimezone",
+    responses=error_responses(
+        401, 404, 422, 503, descriptions={404: "Fuso horário indeterminado", 503: "api-auth indisponível"}
+    ),
+)
 async def get_timezone(
     latitude: Annotated[float, Query(ge=-90, le=90, description="Latitude do ponto")],
     longitude: Annotated[float, Query(ge=-180, le=180, description="Longitude do ponto")],

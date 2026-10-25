@@ -3,8 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import get_http_client
+from app.api.responses import error_responses
 from app.application.address.service import AddressService
 from app.config import get_settings
+from app.infrastructure.auth.bearer_auth import require_authenticated_user
 from app.infrastructure.google.address_validation.adapter import AddressValidationAdapter
 from app.infrastructure.google.geocoding.adapter import GeocodingAdapter
 from app.infrastructure.google.places.adapter import PlacesAdapter
@@ -22,7 +24,7 @@ from app.schemas.address import (
     ValidateResponse,
 )
 
-router = APIRouter(prefix="/v1/address", tags=["address"])
+router = APIRouter(prefix="/v1/address", tags=["Endereços"], dependencies=[Depends(require_authenticated_user)])
 
 
 def _get_service(
@@ -39,7 +41,12 @@ def _get_service(
     )
 
 
-@router.post("/suggestions", summary="Sugere endereços enquanto o usuário digita")
+@router.post(
+    "/suggestions",
+    summary="Sugere endereços enquanto o usuário digita",
+    operation_id="suggestAddresses",
+    responses=error_responses(401, 422, 502, 503, 504),
+)
 async def suggest_addresses(
     request: SuggestionsRequest,
     service: Annotated[AddressService, Depends(_get_service)],
@@ -61,7 +68,14 @@ async def suggest_addresses(
     )
 
 
-@router.get("/places/{place_id}", summary="Detalha o endereço de um lugar escolhido nas sugestões")
+@router.get(
+    "/places/{place_id}",
+    summary="Detalha o endereço de um lugar escolhido nas sugestões",
+    operation_id="getPlace",
+    responses=error_responses(
+        401, 404, 422, 502, 503, 504, descriptions={404: "Lugar inexistente ou identificador expirado"}
+    ),
+)
 async def get_place(
     place_id: str,
     service: Annotated[AddressService, Depends(_get_service)],
@@ -87,7 +101,12 @@ async def get_place(
     return await service.get_place(place_id, session_token=session_token, language=language)
 
 
-@router.post("/geocode", summary="Converte um endereço em texto em coordenadas")
+@router.post(
+    "/geocode",
+    summary="Converte um endereço em texto em coordenadas",
+    operation_id="geocodeAddress",
+    responses=error_responses(400, 401, 422, 502, 503, 504),
+)
 async def geocode(
     request: GeocodeRequest,
     service: Annotated[AddressService, Depends(_get_service)],
@@ -108,7 +127,12 @@ async def geocode(
     return await service.geocode(request.address, language=request.language)
 
 
-@router.post("/reverse-geocode", summary="Converte uma coordenada em endereços")
+@router.post(
+    "/reverse-geocode",
+    summary="Converte uma coordenada em endereços",
+    operation_id="reverseGeocode",
+    responses=error_responses(400, 401, 422, 502, 503, 504),
+)
 async def reverse_geocode(
     request: ReverseGeocodeRequest,
     service: Annotated[AddressService, Depends(_get_service)],
@@ -129,7 +153,12 @@ async def reverse_geocode(
     return await service.reverse_geocode(request.latitude, request.longitude, language=request.language)
 
 
-@router.post("/validate", summary="Valida e normaliza um endereço digitado à mão")
+@router.post(
+    "/validate",
+    summary="Valida e normaliza um endereço digitado à mão",
+    operation_id="validateAddress",
+    responses=error_responses(400, 401, 422, 502, 503, 504),
+)
 async def validate_address(
     request: ValidateRequest,
     service: Annotated[AddressService, Depends(_get_service)],
@@ -149,7 +178,12 @@ async def validate_address(
     return await service.validate(request)
 
 
-@router.post("/resolve", summary="Resolve o endereço final de um lugar escolhido ou de um texto")
+@router.post(
+    "/resolve",
+    summary="Resolve o endereço final de um lugar escolhido ou de um texto",
+    operation_id="resolveAddress",
+    responses=error_responses(401, 404, 422, 502, 503, 504, descriptions={404: "Lugar ou texto sem resultado"}),
+)
 async def resolve_address(
     request: ResolveRequest, service: Annotated[AddressService, Depends(_get_service)]
 ) -> ResolveResponse:

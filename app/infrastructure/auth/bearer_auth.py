@@ -10,7 +10,7 @@ from app.infrastructure.auth.jwks_client import JwksClient, JwksUnavailableError
 
 _ACCESS_TOKEN_TYPE = "access"
 
-_bearer_scheme = HTTPBearer(auto_error=False)
+_bearer_scheme = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
 
 
 async def require_authenticated_user(

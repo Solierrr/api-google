@@ -3,13 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_http_client
+from app.api.responses import error_responses
 from app.application.i18n.service import TranslationService
 from app.config import get_settings
+from app.infrastructure.auth.service_key import require_caller
 from app.infrastructure.google.translation.adapter import TranslationAdapter
 from app.infrastructure.http.google_http_client import GoogleHttpClient
 from app.schemas.i18n import TranslateRequest, TranslateResponse
 
-router = APIRouter(prefix="/v1/i18n", tags=["i18n"])
+router = APIRouter(tags=["Tradução"])
 
 
 def _get_service(
@@ -20,7 +22,15 @@ def _get_service(
     return TranslationService(adapter)
 
 
-@router.post("/translate", summary="Detecta o idioma de origem e traduz campos de texto pros demais idiomas suportados")
+@router.post(
+    "/internal/i18n/translate",
+    summary="Detecta o idioma de origem e traduz campos de texto pros demais idiomas suportados",
+    description="Chamado só pelo api-core, com a chave de serviço dele. O resultado é apenas devolvido.",
+    operation_id="translateFields",
+    dependencies=[Depends(require_caller("api-core"))],
+    responses=error_responses(401, 403, 422, 502, 503, 504),
+)
+@router.post("/v1/i18n/translate", include_in_schema=False, deprecated=True)
 async def translate(
     request: TranslateRequest,
     service: Annotated[TranslationService, Depends(_get_service)],
@@ -28,6 +38,7 @@ async def translate(
     """Detecta o idioma de origem dos campos informados e traduz pros demais idiomas suportados (en/es/pt).
 
     O resultado é apenas devolvido: quem chamou grava onde precisar.
+    `/v1/i18n/translate` fica só até o api-core passar a chamar `/internal/i18n/translate`.
 
     Args:
         request: campos de texto e idioma de origem (opcional)
