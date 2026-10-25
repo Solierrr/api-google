@@ -52,6 +52,23 @@ class Settings(BaseSettings):
         return {"api-core": self.service_key_api_core, "ai-geographic": self.service_key_ai_geographic}
 
 
+class WebSettings(BaseSettings):
+    """Configuração da camada web, lida na importação do app e sem segredos (a exportação do contrato não tem `.env`)"""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # Swagger em /docs e contrato em /openapi.json; desligado em PROD
+    docs_enabled: bool = True
+
+    # Origens aceitas pelo CORS, separadas por vírgula (no QA inclui o web-sandbox)
+    cors_allowed_origins: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Origens do CORS sem espaços nem itens vazios"""
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Retorna a instância única de `Settings` para o processo atual"""
