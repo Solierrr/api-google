@@ -8,7 +8,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from app.infrastructure.observability.tracing import async_redact_url_in_span, redact_api_key, redact_url_in_span
+from app.infrastructure.observability.redaction import async_redact_url_in_span, redact_api_key, redact_url_in_span
 
 
 def test_redact_api_key_replaces_only_the_key_parameter():
@@ -54,7 +54,7 @@ def exporter():
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     instrumentor = HTTPXClientInstrumentor()
-    # outro teste pode já ter instrumentado o httpx (o lifespan da app o faz uma vez por processo)
+    # outro teste pode já ter instrumentado o httpx (setup_observability faz isso no import de app.main)
     instrumentor.uninstrument()
     instrumentor.instrument(
         tracer_provider=provider, request_hook=redact_url_in_span, async_request_hook=async_redact_url_in_span

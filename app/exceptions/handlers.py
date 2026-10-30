@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.errors import problem, register_error_handlers
 from app.exceptions import GoogleProviderException, InternalServiceException
+from app.infrastructure.observability.observability import mark_error
 
 _log = logging.getLogger("google_registry.exceptions")
 
@@ -12,6 +13,7 @@ _log = logging.getLogger("google_registry.exceptions")
 async def _google_provider_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # handler invocado apenas para GoogleProviderException
     assert isinstance(exc, GoogleProviderException)
+    mark_error(exc)
     status_code = exc.http_status
     # Toda exceção tratada gera log correlacionado ao trace:
     # 5xx -> ERROR com stack
@@ -26,6 +28,7 @@ async def _google_provider_exception_handler(request: Request, exc: Exception) -
 async def _internal_service_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # handler invocado apenas para InternalServiceException
     assert isinstance(exc, InternalServiceException)
+    mark_error(exc)
     status_code = exc.http_status
     if status_code >= 500:
         _log.error("Falha %d em %s %s (serviço interno)", status_code, request.method, request.url.path, exc_info=exc)

@@ -26,7 +26,7 @@ FastAPI, arquitetura em camadas por capability (`domain` -> `application` -> `in
 
 ## Observabilidade e autenticação
 
-- **OpenTelemetry** (`app/infrastructure/observability`), logging (console + OTLP), tracing (span por chamada Google/interna) e métricas (contador + histograma de duração, por capability/serviço).
+- **OpenTelemetry** (`app/infrastructure/observability`): `setup_observability` liga traces, métricas HTTP e logs (console + OTLP) do modelo SOLIER; span por chamada Google/interna e métricas de chamadas (contador + histograma de duração, por capability/serviço) ficam em `metrics.py`; `redaction.py` oculta a chave `key=` nos spans e logs.
 - **JWT RS256** (`app/infrastructure/auth/bearer_auth.py`, esquema `bearerAuth`), valida o token de usuário emitido pelo `api-auth` via JWKS; exigido em `/v1/address` e `/v1/geo`, chamadas pelo `mobile-app`.
 - **Chave de serviço** (`app/infrastructure/auth/service_key.py`, esquema `serviceKey`), cabeçalho `X-Service-Key` comparado em tempo constante com `SERVICE_KEY_<CHAMADOR>`; cada rota `/internal` declara os chamadores aceitos (`require_caller`). Chave ausente ou inválida dá 401, chamador não aceito dá 403, e chave com menos de 32 caracteres impede a partida.
 - **Transição**: `/v1/i18n/translate` e `/v1/solar/roof-viability` continuam respondendo sem credencial, fora do contrato, só até o `api-core` e o `ai-geographic` passarem a chamar as rotas `/internal` com a chave; depois saem.
@@ -47,12 +47,12 @@ FastAPI, arquitetura em camadas por capability (`domain` -> `application` -> `in
 │   ├── api/            # routers + dependencies FastAPI
 │   ├── application/    # services por capability
 │   ├── domain/          # ports (contratos) por capability
-│   ├── exceptions/       # hierarquia de exceptions + handlers
+│   ├── exceptions/       # hierarquia de exceptions (ApiError do modelo de erro)
 │   ├── infrastructure/
 │   │   ├── auth/         # JWT/JWKS do api-auth
 │   │   ├── google/       # adapters por capability
 │   │   ├── http/         # clients HTTP compartilhados (Google/interno)
-│   │   ├── observability/ # logging/tracing/metrics OTEL
+│   │   ├── observability/ # setup OTEL, erros ProblemDetail, métricas e redação
 │   │   ├── geo/          # fuso horário local
 │   │   └── solier/       # cliente do api-auth
 │   ├── schemas/          # DTOs por capability

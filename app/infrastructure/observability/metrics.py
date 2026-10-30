@@ -1,51 +1,38 @@
+"""
+Registra as métricas de chamadas às APIs Google e aos serviços internos Solier
+
+Métricas de domínio (`google.*`, `solier.internal.*`) -> o histograma HTTP do modelo não cobre chamadas de saída
+| o meter vem do provider global instalado por setup_observability, sem provider próprio
+"""
+
 from opentelemetry import metrics
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.metrics import Counter, Histogram
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
-_SERVICE_NAME = "google-registry"
+from app.infrastructure.observability import SERVICE_NAME
 
-_requests: Counter | None = None
-_request_duration: Histogram | None = None
-_internal_requests: Counter | None = None
-_internal_request_duration: Histogram | None = None
+# criados no import -> o proxy da API OTel religa os instrumentos quando setup_observability instala o provider
+_meter = metrics.get_meter(SERVICE_NAME)
 
-
-def configure_metrics() -> None:
-    """Instala o `MeterProvider` OTLP e cria os instrumentos para métricas"""
-    global _requests, _request_duration, _internal_requests, _internal_request_duration
-    if _requests is not None:
-        return
-
-    provider = MeterProvider(
-        resource=Resource.create({SERVICE_NAME: _SERVICE_NAME}),
-        metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter())],
-    )
-    metrics.set_meter_provider(provider)
-    meter = metrics.get_meter(_SERVICE_NAME)
-
-    _requests = meter.create_counter(
-        "google.requests",
-        unit="{request}",
-        description="Total de requests para APIs Google, por capability e resultado",
-    )
-    _request_duration = meter.create_histogram(
-        "google.request.duration",
-        unit="s",
-        description="Duração das requests par APIs Google, por capability e resultado.",
-    )
-    _internal_requests = meter.create_counter(
-        "solier.internal.requests",
-        unit="{request}",
-        description="Total de requests para serviços internos Solier (api-auth), por serviço e resultado",
-    )
-    _internal_request_duration = meter.create_histogram(
-        "solier.internal.request.duration",
-        unit="s",
-        description="Duração das requests para serviços internos Solier, por serviço e resultado.",
-    )
+_requests: Counter = _meter.create_counter(
+    "google.requests",
+    unit="{request}",
+    description="Total de requests para APIs Google, por capability e resultado",
+)
+_request_duration: Histogram = _meter.create_histogram(
+    "google.request.duration",
+    unit="s",
+    description="Duração das requests para APIs Google, por capability e resultado.",
+)
+_internal_requests: Counter = _meter.create_counter(
+    "solier.internal.requests",
+    unit="{request}",
+    description="Total de requests para serviços internos Solier (api-auth), por serviço e resultado",
+)
+_internal_request_duration: Histogram = _meter.create_histogram(
+    "solier.internal.request.duration",
+    unit="s",
+    description="Duração das requests para serviços internos Solier, por serviço e resultado.",
+)
 
 
 def record_google_request(
@@ -59,9 +46,6 @@ def record_google_request(
         status_code: status HTTP da resposta (ausente em timeout/erro de rede)
         error_type: valor de `error.type` se a chamada falhou, ou `None` se teve sucesso
     """
-    if _requests is None or _request_duration is None:
-        return
-
     attributes: dict[str, str] = {"google.capability": capability}
     if status_code is not None:
         attributes["http.response.status_code"] = str(status_code)
@@ -83,9 +67,6 @@ def record_internal_request(
         status_code: status HTTP da resposta (ausente em timeout/erro de rede)
         error_type: valor de `error.type` se a chamada falhou, ou `None` se teve sucesso
     """
-    if _internal_requests is None or _internal_request_duration is None:
-        return
-
     attributes: dict[str, str] = {"solier.service": service}
     if status_code is not None:
         attributes["http.response.status_code"] = str(status_code)
