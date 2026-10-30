@@ -23,7 +23,7 @@ def test_suggestions_returns_suggestions(client):
 def test_suggestions_rejects_short_query(client):
     response = client.post("/v1/address/suggestions", json={"query": "av"})
 
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 @respx.mock
@@ -53,7 +53,7 @@ def test_place_details_returns_404_for_unknown_place(client):
     response = client.get("/v1/address/places/missing")
 
     assert response.status_code == 404
-    assert response.json()["errorCode"] == "GOOGLE_NOT_FOUND"
+    assert response.json()["errorCode"] == "NOT_FOUND"
 
 
 GEOCODE = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -95,7 +95,7 @@ def test_geocode_quota_error_becomes_503(client):
     response = client.post("/v1/address/geocode", json={"address": "Av. Paulista"})
 
     assert response.status_code == 503
-    assert response.json()["errorCode"] == "GOOGLE_RATE_LIMIT"
+    assert response.json()["errorCode"] == "DEPENDENCY_UNAVAILABLE"
 
 
 @respx.mock
@@ -111,7 +111,7 @@ def test_reverse_geocode_returns_results(client):
 def test_reverse_geocode_rejects_out_of_range_coordinates(client):
     response = client.post("/v1/address/reverse-geocode", json={"latitude": 95, "longitude": 0})
 
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 VALIDATE = "https://addressvalidation.googleapis.com/v1:validateAddress"
@@ -142,7 +142,7 @@ def test_validate_returns_verdict(client):
 def test_validate_requires_at_least_one_address_line(client):
     response = client.post("/v1/address/validate", json={"address_lines": []})
 
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 @respx.mock
@@ -170,5 +170,5 @@ def test_resolve_requires_exactly_one_of_place_id_and_query(client):
     both = client.post("/v1/address/resolve", json={"place_id": "ChIJ1", "query": "av paulista"})
     neither = client.post("/v1/address/resolve", json={})
 
-    assert both.status_code == 400
-    assert neither.status_code == 400
+    assert both.status_code == 422
+    assert neither.status_code == 422

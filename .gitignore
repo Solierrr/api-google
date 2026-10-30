@@ -103,3 +103,8 @@ htmlcov/
 
 # Logs
 *.log
+
+# Specs e planos ficam fora do repositório
+.sdd/
+docs/specs/
+specs/
