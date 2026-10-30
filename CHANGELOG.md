@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/Solierrr/api-google/compare/v0.3.0...v0.4.0) (2026-10-30)
+
+
+### Features
+
+* add the local run commands ([068088a](https://github.com/Solierrr/api-google/commit/068088a8851bfc27cf0bc09e7cf5a33816973e0d))
+* adopt the solier opentelemetry and problemdetail model ([#31](https://github.com/Solierrr/api-google/issues/31)) ([bf7aa57](https://github.com/Solierrr/api-google/commit/bf7aa57c2deb396cf64e52812426a87dac405f8e))
+* standardize the service contract ([#30](https://github.com/Solierrr/api-google/issues/30)) ([a16ed73](https://github.com/Solierrr/api-google/commit/a16ed73deb165fdb012a26080c8dee94f9ed0afa))
+
 ## [0.3.0](https://github.com/Solierrr/google-registry/compare/v0.2.0...v0.3.0) (2026-10-02)
 
 
