@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 import httpx
+from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
 from app.exceptions import (
@@ -16,8 +17,8 @@ from app.exceptions import (
     GoogleUpstreamException,
     GoogleValidationException,
 )
+from app.infrastructure.observability import SERVICE_NAME
 from app.infrastructure.observability.metrics import record_google_request
-from app.infrastructure.observability.tracing import get_tracer
 
 _MAX_ATTEMPTS = 3
 _BACKOFF_BASE_SECONDS = 0.5
@@ -37,7 +38,7 @@ class GoogleHttpClient:
             base_url=base_url,
             timeout=timeout or httpx.Timeout(connect=3.0, read=10.0, write=10.0, pool=3.0),
         )
-        self._tracer = get_tracer()
+        self._tracer = trace.get_tracer(SERVICE_NAME)
 
     async def request(self, method: str, url: str, *, retry: bool | None = None, **kwargs: Any) -> httpx.Response:
         """Executa a requisição com retry/backoff, span e métricas

@@ -5,12 +5,16 @@ from fastapi import FastAPI
 
 from app.api.routers import address, geo, i18n, solar
 from app.config import get_settings
-from app.exceptions.handlers import register_exception_handlers
 from app.infrastructure.http.google_http_client import GoogleHttpClient
 from app.infrastructure.http.internal_http_client import InternalHttpClient
-from app.infrastructure.observability.logging import attach_otel_to_uvicorn, configure_logging
-from app.infrastructure.observability.metrics import configure_metrics
-from app.infrastructure.observability.tracing import configure_tracing, instrument_fastapi
+from app.infrastructure.observability import SERVICE_NAME
+from app.infrastructure.observability.errors import register_error_handlers
+from app.infrastructure.observability.observability import setup_observability
+from app.infrastructure.observability.redaction import (
+    async_redact_url_in_span,
+    redact_url_in_span,
+    silence_url_loggers,
+)
 
 # Base URL por capability Google - chave usada em app.api.dependencies.get_http_client(capability)
 _GOOGLE_BASE_URLS = {
@@ -25,10 +29,6 @@ _GOOGLE_BASE_URLS = {
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    configure_logging(settings.log_level)
-    configure_tracing(app)
-    configure_metrics()
-    attach_otel_to_uvicorn()
 
     app.state.google_http_clients = {
         capability: GoogleHttpClient(base_url=base_url, capability=capability)
@@ -48,8 +48,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="google-registry", lifespan=_lifespan)
 
-instrument_fastapi(app)
-register_exception_handlers(app)
+# logo após criar a app, nesta ordem -> erros usam o span criado pela observabilidade
+setup_observability(
+    app,
+    SERVICE_NAME,
+    request_hook=redact_url_in_span,
+    async_request_hook=async_redact_url_in_span,
+)
+silence_url_loggers()
+register_error_handlers(app)
 
 app.include_router(address.router)
 app.include_router(solar.router)

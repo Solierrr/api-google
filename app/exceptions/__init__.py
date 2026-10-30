@@ -1,11 +1,26 @@
+"""
+Exceções de falha nas chamadas a APIs Google e a serviços internos Solier, todas ApiError do modelo de erro
+
+Quem lança escolhe a subclasse e o handler global do modelo monta o ProblemDetail: errorCode = nome da classe em
+UPPER_SNAKE sem o sufixo Exception | capability/service e error_type alimentam as métricas
+"""
+
+import re
 from typing import Any
 
+from app.infrastructure.observability.errors import ApiError
 
-class GoogleProviderException(Exception):
-    """Exceção base de qualquer erro
 
-    transforma a mensagem para os consumers internos
-    adiciona: nome da capablity que gerou o erro
+def _error_code(class_name: str) -> str:
+    """GoogleAuthenticationException -> GOOGLE_AUTHENTICATION"""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", class_name.removesuffix("Exception")).upper()
+
+
+class GoogleProviderException(ApiError):
+    """Converte a falha de uma API Google em ApiError, com a capability de origem
+
+    status = http_status e errorCode = nome da classe -> o cliente recebe o contrato certo só pela subclasse
+    | equivale ao BusinessException do api-core
     """
 
     http_status: int = 502
@@ -15,11 +30,21 @@ class GoogleProviderException(Exception):
     def __init__(
         self, message: str, *, capability: str, status_code: int | None = None, reason: str | None = None
     ) -> None:
-        super().__init__(message)
         self.capability = capability
         self.status_code = status_code
         #: Motivo estruturado devolvido pelo Google
         self.reason = reason
+        super().__init__(message, self.details())
+
+    @property
+    def status(self) -> int:
+        """Status HTTP do ProblemDetail (`ApiError.status`)"""
+        return self.http_status
+
+    @property
+    def error_code(self) -> str:
+        """errorCode do ProblemDetail, derivado do nome da classe"""
+        return _error_code(type(self).__name__)
 
     def details(self) -> dict[str, Any] | None:
         """Detalhes estruturados para o payload da exception (`None` = sem detalhes)"""
@@ -92,24 +117,38 @@ class CalendarTokenRevokedException(GoogleProviderException):
     error_type = "token_revoked"
 
     def __init__(self, message: str, *, technician_id: str) -> None:
-        super().__init__(message, capability="calendar")
+        # antes do super: details() (que vai para o corpo do erro) lê technician_id
         self.technician_id = technician_id
+        super().__init__(message, capability="calendar")
 
     def details(self) -> dict[str, Any]:
         return {"technician_id": self.technician_id}
 
 
-class InternalServiceException(Exception):
-    """Exceção base de erro ao chamar um serviço interno Solier (api-auth)"""
+class InternalServiceException(ApiError):
+    """Converte a falha de um serviço interno Solier (api-auth) em ApiError, com o serviço de origem
+
+    status = http_status e errorCode = nome da classe | equivale ao BusinessException do api-core
+    """
 
     http_status: int = 502
     #: Valor de `error.type` nas métricas desta exception
     error_type: str = "unknown"
 
     def __init__(self, message: str, *, service: str, status_code: int | None = None) -> None:
-        super().__init__(message)
         self.service = service
         self.status_code = status_code
+        super().__init__(message, self.details())
+
+    @property
+    def status(self) -> int:
+        """Status HTTP do ProblemDetail (`ApiError.status`)"""
+        return self.http_status
+
+    @property
+    def error_code(self) -> str:
+        """errorCode do ProblemDetail, derivado do nome da classe"""
+        return _error_code(type(self).__name__)
 
     def details(self) -> dict[str, Any] | None:
         """Detalhes estruturados para o payload da exception (`None` = sem detalhes)"""
