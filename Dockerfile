@@ -3,6 +3,7 @@ FROM python:latest
 WORKDIR /app
 
 COPY pyproject.toml .
+COPY version.txt .
 COPY app ./app
 
 RUN pip install --no-cache-dir .

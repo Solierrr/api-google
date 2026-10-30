@@ -7,6 +7,8 @@ os.environ["GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET"] = "test-calendar-client-secret
 os.environ["GOOGLE_CALENDAR_OAUTH_REDIRECT_URI"] = "http://localhost:8000/calendar/callback"
 os.environ["AUTH_BASE_URL"] = "http://localhost:8081"
 os.environ["LLM_PROBE_INTERVAL_SECONDS"] = "0"
+os.environ["SERVICE_KEY_API_CORE"] = "test-service-key-api-core-0000000000"
+os.environ["SERVICE_KEY_AI_GEOGRAPHIC"] = "test-service-key-ai-geographic-00000"
 
 import pytest  # noqa: E402
 
@@ -37,7 +39,7 @@ def _no_retry_backoff(monkeypatch):
 
 
 @pytest.fixture
-def client():
+def anonymous_client():
     """Cliente HTTP de teste da aplicação FastAPI (roda o lifespan, sem I/O real na criação dos clients)"""
     from fastapi.testclient import TestClient
 
@@ -45,3 +47,14 @@ def client():
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def client(anonymous_client):
+    """Cliente de teste com um usuário autenticado (o JWT é validado nos testes de `bearer_auth`)"""
+    from app.infrastructure.auth.bearer_auth import require_authenticated_user
+    from app.main import app
+
+    app.dependency_overrides[require_authenticated_user] = lambda: "user-1"
+    yield anonymous_client
+    app.dependency_overrides.pop(require_authenticated_user, None)

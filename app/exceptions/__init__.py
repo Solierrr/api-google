@@ -9,6 +9,8 @@ class GoogleProviderException(Exception):
     """
 
     http_status: int = 502
+    #: `errorCode` do contrato de erro (catálogo do docs-warehouse)
+    error_code: str = "DEPENDENCY_UNAVAILABLE"
     #: Valor de `error.type` nas métricas desta exception
     error_type: str = "unknown"
 
@@ -51,6 +53,7 @@ class GoogleValidationException(GoogleProviderException):
     """request rejeitada pelo Google por parâmetro obrigatório ausente ou malformado"""
 
     http_status = 400
+    error_code = "UPSTREAM_REQUEST_REJECTED"
     error_type = "validation"
 
 
@@ -58,6 +61,7 @@ class GoogleNotFoundException(GoogleProviderException):
     """dado não encontrado pelo Google"""
 
     http_status = 404
+    error_code = "NOT_FOUND"
     error_type = "not_found"
 
 
@@ -89,6 +93,7 @@ class CalendarTokenRevokedException(GoogleProviderException):
     """
 
     http_status = 409
+    error_code = "CONFLICT"
     error_type = "token_revoked"
 
     def __init__(self, message: str, *, technician_id: str) -> None:
@@ -103,6 +108,8 @@ class InternalServiceException(Exception):
     """Exceção base de erro ao chamar um serviço interno Solier (api-auth)"""
 
     http_status: int = 502
+    #: `errorCode` do contrato de erro (catálogo do docs-warehouse)
+    error_code: str = "DEPENDENCY_UNAVAILABLE"
     #: Valor de `error.type` nas métricas desta exception
     error_type: str = "unknown"
 
@@ -120,6 +127,7 @@ class InternalServiceValidationException(InternalServiceException):
     """Requisição rejeitada pelo serviço interno por parâmetro obrigatório ausente ou malformado"""
 
     http_status = 400
+    error_code = "UPSTREAM_REQUEST_REJECTED"
     error_type = "validation"
 
 
@@ -127,6 +135,7 @@ class InternalServiceNotFoundException(InternalServiceException):
     """Recurso não encontrado no serviço interno"""
 
     http_status = 404
+    error_code = "NOT_FOUND"
     error_type = "not_found"
 
 

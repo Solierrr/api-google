@@ -6,7 +6,18 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "google-registry"
+      "package-name": "google-registry",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "pyproject.toml",
+          "jsonpath": "$.project.version"
+        },
+        {
+          "type": "generic",
+          "path": "openapi.yaml"
+        }
+      ]
     }
   }
 }
