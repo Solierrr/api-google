@@ -24,4 +24,4 @@ def test_translate_returns_translations_without_writing_anywhere(client):
 def test_translate_rejects_empty_fields(client):
     response = client.post("/v1/i18n/translate", json={"fields": []})
 
-    assert response.status_code == 422
+    assert response.status_code == 400

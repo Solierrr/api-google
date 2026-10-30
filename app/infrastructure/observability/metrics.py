@@ -21,7 +21,7 @@ _requests: Counter = _meter.create_counter(
 _request_duration: Histogram = _meter.create_histogram(
     "google.request.duration",
     unit="s",
-    description="Duração das requests par APIs Google, por capability e resultado.",
+    description="Duração das requests para APIs Google, por capability e resultado.",
 )
 _internal_requests: Counter = _meter.create_counter(
     "solier.internal.requests",

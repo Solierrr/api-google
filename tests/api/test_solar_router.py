@@ -27,7 +27,7 @@ def test_roof_viability_returns_viability(client):
 def test_roof_viability_rejects_out_of_range_latitude(client):
     response = client.get("/v1/solar/roof-viability", params={"latitude": 100, "longitude": 0})
 
-    assert response.status_code == 422
+    assert response.status_code == 400
 
 
 @respx.mock
@@ -37,4 +37,4 @@ def test_roof_viability_returns_404_without_coverage(client):
     response = client.get("/v1/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6})
 
     assert response.status_code == 404
-    assert response.json()["code"] == "GoogleNotFoundException"
+    assert response.json()["errorCode"] == "GOOGLE_NOT_FOUND"

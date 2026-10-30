@@ -15,5 +15,5 @@ def test_timezone_without_instant_uses_now(client):
 
 
 def test_timezone_rejects_out_of_range_coordinates(client):
-    assert client.get("/v1/geo/timezone", params={"latitude": 91, "longitude": 0}).status_code == 422
-    assert client.get("/v1/geo/timezone", params={"latitude": 0, "longitude": 181}).status_code == 422
+    assert client.get("/v1/geo/timezone", params={"latitude": 91, "longitude": 0}).status_code == 400
+    assert client.get("/v1/geo/timezone", params={"latitude": 0, "longitude": 181}).status_code == 400

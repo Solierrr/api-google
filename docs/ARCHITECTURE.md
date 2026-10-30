@@ -26,7 +26,8 @@ FastAPI, arquitetura em camadas por capability (`domain` -> `application` -> `in
 
 ## Observabilidade e autenticação
 
-- **OpenTelemetry** (`app/infrastructure/observability`), logging (console + OTLP), tracing (span por chamada Google/interna) e métricas (contador + histograma de duração, por capability/serviço).
+- **OpenTelemetry** (`app/infrastructure/observability`): `setup_observability` liga traces, métricas HTTP e logs (console + OTLP) do modelo SOLIER; span por chamada Google/interna e métricas de chamadas (contador + histograma de duração, por capability/serviço) ficam em `metrics.py`; `redaction.py` oculta a chave `key=` nos spans e logs.
+- **Erros**: exceções de falha em `app/exceptions` herdam `ApiError` (modelo em `app/infrastructure/observability/errors.py`) e saem como ProblemDetail (`application/problem+json`, `errorCode`), pelo handler global `register_error_handlers`.
 - **JWT RS256** (`app/infrastructure/auth`), valida o token de usuário emitido pelo `api-auth` via JWKS — usado pelos endpoints que expõem operações do usuário final (nenhum endpoint hoje declara essa dependency; adicionar via `Depends(require_authenticated_user)` quando fizer sentido).
 
 ## Containerização
@@ -38,12 +39,12 @@ FastAPI, arquitetura em camadas por capability (`domain` -> `application` -> `in
 │   ├── api/            # routers + dependencies FastAPI
 │   ├── application/    # services por capability
 │   ├── domain/          # ports (contratos) por capability
-│   ├── exceptions/       # hierarquia de exceptions + handlers
+│   ├── exceptions/       # hierarquia de exceptions (ApiError do modelo de erro)
 │   ├── infrastructure/
 │   │   ├── auth/         # JWT/JWKS do api-auth
 │   │   ├── google/       # adapters por capability
 │   │   ├── http/         # clients HTTP compartilhados (Google/interno)
-│   │   ├── observability/ # logging/tracing/metrics OTEL
+│   │   ├── observability/ # setup OTEL, erros ProblemDetail, métricas e redação
 │   │   ├── geo/          # fuso horário local
 │   │   └── solier/       # cliente do api-auth
 │   ├── schemas/          # DTOs por capability
