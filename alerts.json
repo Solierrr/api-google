@@ -1,0 +1,8 @@
+{
+  "service": "api-google",
+  "aliases": [
+    "google",
+    "google-registry"
+  ],
+  "project": "DEV"
+}
