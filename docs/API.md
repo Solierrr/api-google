@@ -18,7 +18,7 @@ As rotas `/v1/address` e `/v1/geo` exigem `Authorization: Bearer <token>` com o 
 | Energia solar | Dados solares do telhado mais próximo. |
 | Saúde | Estado do processo e prontidão. |
 
-As rotas antigas `/v1/i18n/translate` e `/v1/solar/roof-viability` permanecem abertas e fora do contrato, e saem depois que os chamadores migrarem para as rotas `/internal` com a `X-Service-Key`.
+Tradução, geocodificação para serviços e viabilidade solar só respondem em `/internal/i18n/translate`, `/internal/address/geocode` e `/internal/solar/roof-viability`, com a `X-Service-Key` do chamador autorizado (`api-core` nas duas primeiras, `ai-geographic` na última). As rotas antigas abertas `/v1/i18n/translate` e `/v1/solar/roof-viability` foram removidas.
 
 ## Erros
 
