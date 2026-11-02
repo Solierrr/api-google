@@ -7,6 +7,7 @@ from app.api.responses import error_responses
 from app.application.address.service import AddressService
 from app.config import get_settings
 from app.infrastructure.auth.bearer_auth import require_authenticated_user
+from app.infrastructure.auth.service_key import require_caller
 from app.infrastructure.google.address_validation.adapter import AddressValidationAdapter
 from app.infrastructure.google.geocoding.adapter import GeocodingAdapter
 from app.infrastructure.google.places.adapter import PlacesAdapter
@@ -25,6 +26,9 @@ from app.schemas.address import (
 )
 
 router = APIRouter(prefix="/v1/address", tags=["Endereços"], dependencies=[Depends(require_authenticated_user)])
+internal_router = APIRouter(
+    prefix="/internal/address", tags=["Endereços"], dependencies=[Depends(require_caller("api-core"))]
+)
 
 
 def _get_service(
@@ -101,6 +105,13 @@ async def get_place(
     return await service.get_place(place_id, session_token=session_token, language=language)
 
 
+@internal_router.post(
+    "/geocode",
+    summary="Converte um endereço em texto em coordenadas, para serviços internos",
+    description="Chamado só pelo api-core, com a chave de serviço dele (não há usuário na chamada).",
+    operation_id="geocodeAddressInternal",
+    responses=error_responses(400, 401, 403, 422, 502, 503, 504),
+)
 @router.post(
     "/geocode",
     summary="Converte um endereço em texto em coordenadas",

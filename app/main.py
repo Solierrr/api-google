@@ -106,6 +106,7 @@ register_exception_handlers(app)
 
 app.include_router(health.router)
 app.include_router(address.router)
+app.include_router(address.internal_router)
 app.include_router(solar.router)
 app.include_router(geo.router)
 app.include_router(i18n.router)

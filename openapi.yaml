@@ -568,6 +568,92 @@ paths:
       - MALFORMED_REQUEST
       - DEPENDENCY_UNAVAILABLE
       - INTERNAL_ERROR
+  /internal/address/geocode:
+    post:
+      tags:
+      - Endereços
+      summary: Converte um endereço em texto em coordenadas, para serviços internos
+      description: Chamado só pelo api-core, com a chave de serviço dele (não há usuário na chamada).
+      operationId: geocodeAddressInternal
+      security:
+      - serviceKey: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeocodeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressListResponse'
+        '400':
+          description: O Google recusou os parâmetros do pedido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
+          description: Serviço chamador não autorizado nesta rota
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UPSTREAM_REQUEST_REJECTED
+      - UNAUTHENTICATED
+      - FORBIDDEN
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
   /internal/solar/roof-viability:
     get:
       tags:

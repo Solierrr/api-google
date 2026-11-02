@@ -30,7 +30,6 @@ def _get_service(
     dependencies=[Depends(require_caller("api-core"))],
     responses=error_responses(401, 403, 422, 502, 503, 504),
 )
-@router.post("/v1/i18n/translate", include_in_schema=False, deprecated=True)
 async def translate(
     request: TranslateRequest,
     service: Annotated[TranslationService, Depends(_get_service)],
@@ -38,7 +37,6 @@ async def translate(
     """Detecta o idioma de origem dos campos informados e traduz pros demais idiomas suportados (en/es/pt).
 
     O resultado é apenas devolvido: quem chamou grava onde precisar.
-    `/v1/i18n/translate` fica só até o api-core passar a chamar `/internal/i18n/translate`.
 
     Args:
         request: campos de texto e idioma de origem (opcional)
