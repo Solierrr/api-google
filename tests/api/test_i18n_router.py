@@ -1,6 +1,8 @@
 import httpx
 import respx
 
+HEADERS = {"X-Service-Key": "test-service-key-api-core-0000000000"}
+
 BASE_URL = "https://translation.googleapis.com"
 
 
@@ -13,7 +15,9 @@ def test_translate_returns_translations_without_writing_anywhere(client):
         return_value=httpx.Response(200, json={"data": {"translations": [{"translatedText": "Translated"}]}})
     )
 
-    response = client.post("/v1/i18n/translate", json={"fields": [{"field_name": "title", "text": "Curso"}]})
+    response = client.post(
+        "/internal/i18n/translate", json={"fields": [{"field_name": "title", "text": "Curso"}]}, headers=HEADERS
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -22,6 +26,6 @@ def test_translate_returns_translations_without_writing_anywhere(client):
 
 
 def test_translate_rejects_empty_fields(client):
-    response = client.post("/v1/i18n/translate", json={"fields": []})
+    response = client.post("/internal/i18n/translate", json={"fields": []}, headers=HEADERS)
 
     assert response.status_code == 422
