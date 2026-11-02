@@ -1,10 +1,3 @@
-"""Hierarquia de exceções da API
-
-Adapters traduzem erros http vindo do google para consumers internos
-
-cada classe tem um status code declarado
-"""
-
 from typing import Any
 
 
@@ -16,6 +9,8 @@ class GoogleProviderException(Exception):
     """
 
     http_status: int = 502
+    #: `errorCode` do contrato de erro (catálogo do docs-warehouse)
+    error_code: str = "DEPENDENCY_UNAVAILABLE"
     #: Valor de `error.type` nas métricas desta exception
     error_type: str = "unknown"
 
@@ -58,6 +53,7 @@ class GoogleValidationException(GoogleProviderException):
     """request rejeitada pelo Google por parâmetro obrigatório ausente ou malformado"""
 
     http_status = 400
+    error_code = "UPSTREAM_REQUEST_REJECTED"
     error_type = "validation"
 
 
@@ -65,6 +61,7 @@ class GoogleNotFoundException(GoogleProviderException):
     """dado não encontrado pelo Google"""
 
     http_status = 404
+    error_code = "NOT_FOUND"
     error_type = "not_found"
 
 
@@ -96,6 +93,7 @@ class CalendarTokenRevokedException(GoogleProviderException):
     """
 
     http_status = 409
+    error_code = "CONFLICT"
     error_type = "token_revoked"
 
     def __init__(self, message: str, *, technician_id: str) -> None:
@@ -110,6 +108,8 @@ class InternalServiceException(Exception):
     """Exceção base de erro ao chamar um serviço interno Solier (api-auth)"""
 
     http_status: int = 502
+    #: `errorCode` do contrato de erro (catálogo do docs-warehouse)
+    error_code: str = "DEPENDENCY_UNAVAILABLE"
     #: Valor de `error.type` nas métricas desta exception
     error_type: str = "unknown"
 
@@ -127,6 +127,7 @@ class InternalServiceValidationException(InternalServiceException):
     """Requisição rejeitada pelo serviço interno por parâmetro obrigatório ausente ou malformado"""
 
     http_status = 400
+    error_code = "UPSTREAM_REQUEST_REJECTED"
     error_type = "validation"
 
 
@@ -134,6 +135,7 @@ class InternalServiceNotFoundException(InternalServiceException):
     """Recurso não encontrado no serviço interno"""
 
     http_status = 404
+    error_code = "NOT_FOUND"
     error_type = "not_found"
 
 
@@ -156,44 +158,3 @@ class InternalServiceUpstreamException(InternalServiceException):
 
     http_status = 502
     error_type = "upstream"
-
-
-class LlmKeyException(Exception):
-    """Exceção base de erro ao entregar ou registrar chaves de LLM"""
-
-    http_status: int = 500
-    error_type: str = "llm_key_error"
-
-    def __init__(self, message: str, *, retry_after_seconds: int | None = None) -> None:
-        super().__init__(message)
-        self.retry_after_seconds = retry_after_seconds
-
-    def details(self) -> dict[str, Any] | None:
-        """Detalhes opcionais incluídos no corpo da resposta de erro"""
-        return None
-
-
-class LlmKeysNotConfiguredException(LlmKeyException):
-    """Nenhuma chave configurada para o provedor/uso pedido"""
-
-    http_status = 404
-    error_type = "keys_not_configured"
-
-
-class LlmKeysUnavailableException(LlmKeyException):
-    """Há chaves configuradas, mas nenhuma disponível agora (em descanso ou inválidas)"""
-
-    http_status = 503
-    error_type = "keys_unavailable"
-
-    def details(self) -> dict[str, Any] | None:
-        if self.retry_after_seconds is None:
-            return None
-        return {"retry_after_seconds": self.retry_after_seconds}
-
-
-class LlmKeyNotFoundException(LlmKeyException):
-    """Identificador de chave desconhecido"""
-
-    http_status = 404
-    error_type = "key_not_found"

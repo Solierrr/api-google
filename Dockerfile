@@ -1,20 +1,13 @@
-FROM python:3.14
+FROM python:latest
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
-    && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.lock .
-RUN pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements.lock
-
+COPY pyproject.toml .
+COPY version.txt .
 COPY app ./app
 
-COPY entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+RUN pip install --no-cache-dir .
 
 EXPOSE 8000
 
-ENTRYPOINT ["./entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

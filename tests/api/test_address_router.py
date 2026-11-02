@@ -1,5 +1,3 @@
-"""Testes de /v1/address/suggestions e /v1/address/places/{place_id}"""
-
 import httpx
 import respx
 
@@ -55,7 +53,7 @@ def test_place_details_returns_404_for_unknown_place(client):
     response = client.get("/v1/address/places/missing")
 
     assert response.status_code == 404
-    assert response.json()["code"] == "GoogleNotFoundException"
+    assert response.json()["errorCode"] == "NOT_FOUND"
 
 
 GEOCODE = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -97,7 +95,7 @@ def test_geocode_quota_error_becomes_503(client):
     response = client.post("/v1/address/geocode", json={"address": "Av. Paulista"})
 
     assert response.status_code == 503
-    assert response.json()["code"] == "GoogleRateLimitException"
+    assert response.json()["errorCode"] == "DEPENDENCY_UNAVAILABLE"
 
 
 @respx.mock

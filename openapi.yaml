@@ -1,0 +1,1543 @@
+openapi: 3.1.0
+info:
+  title: Solaria — api-google
+  description: 'Ponto único de acesso às APIs do Google da Solaria: endereços (Places, Geocoding e Address Validation), fuso
+    horário, viabilidade solar e tradução. Sem estado: só consulta o Google e devolve o resultado. Pessoas autenticam com
+    o JWT do api-auth (bearerAuth); serviços chamam as rotas /internal com a chave de serviço (serviceKey).'
+  contact:
+    name: Solaria
+    url: https://github.com/Solierrr
+  license:
+    name: CC0-1.0
+    url: https://creativecommons.org/publicdomain/zero/1.0/
+  version: 0.3.0  # x-release-please-version
+servers:
+- url: https://google-registry.onrender.com
+  description: QA
+- url: http://localhost:8000
+  description: Local
+paths:
+  /health:
+    get:
+      tags:
+      - Saúde
+      summary: Indica se o processo está vivo
+      description: Responde sem consultar nenhuma dependência
+      operationId: getHealth
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security: []
+      x-error-codes:
+      - INTERNAL_ERROR
+  /ready:
+    get:
+      tags:
+      - Saúde
+      summary: Indica se o serviço está pronto para atender
+      description: 'O serviço não guarda estado: fica pronto quando os clientes HTTP do Google e do api-auth foram criados.
+        Quando não está pronto, responde 503 com {"status": "DOWN"}.'
+      operationId: getReady
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security: []
+      x-error-codes:
+      - INTERNAL_ERROR
+  /v1/address/suggestions:
+    post:
+      tags:
+      - Endereços
+      summary: Sugere endereços enquanto o usuário digita
+      description: "Sugere endereços para o texto digitado, restritos ao país informado (padrão BR).\n\nArgs:\n    request:\
+        \ texto, token de sessão (opcional), idioma e país\n    service: service com os clients google injetados\n\nReturns:\n\
+        \    As sugestões, da mais relevante para a menos (lista vazia se nada casar)\n\nRaises:\n    GoogleUpstreamException:\
+        \ resposta HTTP 200 do Google em formato inesperado"
+      operationId: suggestAddresses
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuggestionsRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestionsResponse'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/address/places/{place_id}:
+    get:
+      tags:
+      - Endereços
+      summary: Detalha o endereço de um lugar escolhido nas sugestões
+      description: "Devolve o endereço estruturado e as coordenadas de um lugar.\n\nArgs:\n    place_id: identificador do\
+        \ lugar, vindo das sugestões\n    service: service com os clients google injetados\n    session_token: mesmo token\
+        \ de sessão enviado nas sugestões\n    language: idioma da resposta\n\nReturns:\n    O endereço com coordenadas\n\n\
+        Raises:\n    GoogleNotFoundException: place_id inexistente ou expirado / HTTP 404"
+      operationId: getPlace
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: place_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Place Id
+      - name: session_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Mesmo token de sessão enviado nas sugestões (agrupa a cobrança)
+          title: Session Token
+        description: Mesmo token de sessão enviado nas sugestões (agrupa a cobrança)
+      - name: language
+        in: query
+        required: false
+        schema:
+          type: string
+          description: Idioma da resposta
+          default: pt-BR
+          title: Language
+        description: Idioma da resposta
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Lugar inexistente ou identificador expirado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - NOT_FOUND
+      - VALIDATION_FAILED
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/address/geocode:
+    post:
+      tags:
+      - Endereços
+      summary: Converte um endereço em texto em coordenadas
+      description: "Converte um endereço em texto livre em coordenadas, restrito ao Brasil.\n\nArgs:\n    request: endereço\
+        \ e idioma\n    service: service com os clients google injetados\n\nReturns:\n    Os endereços encontrados, com precisão\
+        \ e indicação de casamento parcial (lista vazia se nada casar)\n\nRaises:\n    GoogleRateLimitException: quota excedida\
+        \ / HTTP 503\n    GoogleValidationException: pedido inválido / HTTP 400"
+      operationId: geocodeAddress
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeocodeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressListResponse'
+        '400':
+          description: O Google recusou os parâmetros do pedido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UPSTREAM_REQUEST_REJECTED
+      - UNAUTHENTICATED
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/address/reverse-geocode:
+    post:
+      tags:
+      - Endereços
+      summary: Converte uma coordenada em endereços
+      description: "Converte uma coordenada em endereços, do mais específico para o menos.\n\nArgs:\n    request: coordenada\
+        \ e idioma\n    service: service com os clients google injetados\n\nReturns:\n    Os endereços encontrados (lista\
+        \ vazia se não houver)\n\nRaises:\n    GoogleRateLimitException: quota excedida / HTTP 503\n    GoogleValidationException:\
+        \ pedido inválido / HTTP 400"
+      operationId: reverseGeocode
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseGeocodeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressListResponse'
+        '400':
+          description: O Google recusou os parâmetros do pedido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UPSTREAM_REQUEST_REJECTED
+      - UNAUTHENTICATED
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/address/validate:
+    post:
+      tags:
+      - Endereços
+      summary: Valida e normaliza um endereço digitado à mão
+      description: "Valida um endereço e devolve o veredito, o que falta ou não foi confirmado e a versão normalizada.\n\n\
+        Args:\n    request: linhas do endereço, CEP, cidade, UF e país\n    service: service com os clients google injetados\n\
+        \nReturns:\n    O veredito (`ok`, `needs_review` ou `invalid`) e o endereço normalizado com coordenadas\n\nRaises:\n\
+        \    GoogleValidationException: pedido inválido / HTTP 400"
+      operationId: validateAddress
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+        '400':
+          description: O Google recusou os parâmetros do pedido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UPSTREAM_REQUEST_REJECTED
+      - UNAUTHENTICATED
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/address/resolve:
+    post:
+      tags:
+      - Endereços
+      summary: Resolve o endereço final de um lugar escolhido ou de um texto
+      description: "Devolve o endereço estruturado, as coordenadas e a validação em uma só chamada.\n\nInforme `place_id`\
+        \ (lugar escolhido nas sugestões) ou `query` (texto livre), nunca os dois.\nSe a validação falhar por erro do Google,\
+        \ o endereço ainda é devolvido, com `validation` nulo.\n\nArgs:\n    request: `place_id` ou `query`, token de sessão\
+        \ e idioma\n    service: service com os clients google injetados\n\nReturns:\n    O endereço com coordenadas e a validação\n\
+        \nRaises:\n    GoogleNotFoundException: lugar ou texto sem resultado / HTTP 404"
+      operationId: resolveAddress
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: address_validation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveResponse'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Lugar ou texto sem resultado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - NOT_FOUND
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /internal/solar/roof-viability:
+    get:
+      tags:
+      - Energia solar
+      summary: Consulta a viabilidade solar do telhado mais próximo
+      description: Chamado só pelo ai-geographic, com a chave de serviço dele. Toda chamada consulta a Solar API.
+      operationId: getRoofViability
+      security:
+      - serviceKey: []
+      parameters:
+      - name: latitude
+        in: query
+        required: true
+        schema:
+          type: number
+          maximum: 90
+          minimum: -90
+          description: Latitude do ponto a consultar
+          title: Latitude
+        description: Latitude do ponto a consultar
+      - name: longitude
+        in: query
+        required: true
+        schema:
+          type: number
+          maximum: 180
+          minimum: -180
+          description: Longitude do ponto a consultar
+          title: Longitude
+        description: Longitude do ponto a consultar
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: solar
+          title: ' Capability'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolarViability'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
+          description: Serviço chamador não autorizado nesta rota
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Sem cobertura de dados solares para a coordenada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - FORBIDDEN
+      - NOT_FOUND
+      - VALIDATION_FAILED
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /v1/geo/timezone:
+    get:
+      tags:
+      - Geografia
+      summary: Fuso horário de uma coordenada
+      description: "Descobre o fuso horário da coordenada sem consultar nenhuma API externa.\n\nArgs:\n    latitude: latitude\
+        \ do ponto\n    longitude: longitude do ponto\n    service: service com a base de fusos local\n    at: instante para\
+        \ calcular o deslocamento do UTC\n\nReturns:\n    O identificador IANA do fuso e o deslocamento do UTC em segundos\n\
+        \nRaises:\n    HTTPException: 404 se não for possível determinar o fuso"
+      operationId: getTimezone
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: latitude
+        in: query
+        required: true
+        schema:
+          type: number
+          maximum: 90
+          minimum: -90
+          description: Latitude do ponto
+          title: Latitude
+        description: Latitude do ponto
+      - name: longitude
+        in: query
+        required: true
+        schema:
+          type: number
+          maximum: 180
+          minimum: -180
+          description: Longitude do ponto
+          title: Longitude
+        description: Longitude do ponto
+      - name: at
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          description: 'Instante para calcular o deslocamento do UTC (ISO 8601; omitido: agora; sem fuso vale UTC)'
+          title: At
+        description: 'Instante para calcular o deslocamento do UTC (ISO 8601; omitido: agora; sem fuso vale UTC)'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimezoneResponse'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Fuso horário indeterminado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: api-auth indisponível
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - NOT_FOUND
+      - VALIDATION_FAILED
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /internal/i18n/translate:
+    post:
+      tags:
+      - Tradução
+      summary: Detecta o idioma de origem e traduz campos de texto pros demais idiomas suportados
+      description: Chamado só pelo api-core, com a chave de serviço dele. O resultado é apenas devolvido.
+      operationId: translateFields
+      security:
+      - serviceKey: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: translation
+          title: ' Capability'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslateResponse'
+        '401':
+          description: Credencial ausente, inválida ou expirada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
+          description: Serviço chamador não autorizado nesta rota
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
+          description: O Google respondeu em formato inesperado ou recusou a chave do serviço
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: Google ou api-auth indisponível, ou quota do Google excedida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '504':
+          description: O Google não respondeu a tempo
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - UNAUTHENTICATED
+      - FORBIDDEN
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL_ERROR
+components:
+  schemas:
+    Address:
+      properties:
+        place_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Place Id
+          description: Identificador do lugar no Google, quando existe
+        formatted_address:
+          type: string
+          title: Formatted Address
+          description: Endereço completo em uma linha
+        street_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Street Name
+          description: Nome da rua
+        street_number:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Street Number
+          description: Número
+        complement:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Complement
+          description: Complemento (sala, apartamento...)
+        neighborhood:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Neighborhood
+          description: Bairro
+        city:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: City
+          description: Cidade
+        state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: State
+          description: UF
+        postal_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postal Code
+          description: CEP
+        country_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Country Code
+          description: País (ISO 3166-1 alfa-2)
+        latitude:
+          type: number
+          title: Latitude
+          description: Latitude
+        longitude:
+          type: number
+          title: Longitude
+          description: Longitude
+        precision:
+          anyOf:
+          - type: string
+            enum:
+            - rooftop
+            - interpolated
+            - center
+            - approximate
+          - type: 'null'
+          title: Precision
+          description: 'Precisão da coordenada (só quando o Google informa, ex.: geocodificação)'
+        partial_match:
+          type: boolean
+          title: Partial Match
+          description: O Google só casou parte do texto informado
+          default: false
+      type: object
+      required:
+      - formatted_address
+      - latitude
+      - longitude
+      title: Address
+      description: Endereço estruturado, com coordenadas
+    AddressListResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/Address'
+          type: array
+          title: Results
+          description: Endereços encontrados (vazia se nada casar)
+      type: object
+      required:
+      - results
+      title: AddressListResponse
+      description: Endereços encontrados, do mais relevante/específico para o menos
+    AddressValidation:
+      properties:
+        verdict:
+          type: string
+          enum:
+          - ok
+          - needs_review
+          - invalid
+          title: Verdict
+          description: 'ok: endereço completo e confirmado; needs_review: existe, mas há componentes não confirmados ou faltando;
+            invalid: não foi possível validar'
+        missing_components:
+          items:
+            type: string
+          type: array
+          title: Missing Components
+          description: 'Tipos de componente que faltam (ex.: street_number)'
+        unconfirmed_components:
+          items:
+            type: string
+          type: array
+          title: Unconfirmed Components
+          description: Tipos de componente que o Google não conseguiu confirmar
+      type: object
+      required:
+      - verdict
+      title: AddressValidation
+      description: Resultado da validação de um endereço
+    GeocodeRequest:
+      properties:
+        address:
+          type: string
+          minLength: 3
+          title: Address
+          description: Endereço em texto livre
+        language:
+          type: string
+          title: Language
+          description: Idioma da resposta
+          default: pt-BR
+      type: object
+      required:
+      - address
+      title: GeocodeRequest
+      description: Pedido de coordenadas para um endereço em texto
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: UP quando o processo responde
+          examples:
+          - UP
+        version:
+          type: string
+          title: Version
+          description: Versão do release em execução
+          examples:
+          - 0.3.0
+      type: object
+      required:
+      - status
+      - version
+      title: HealthResponse
+      description: Estado do processo
+    ReadyResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: UP quando o serviço pode atender, DOWN quando não
+          examples:
+          - UP
+      type: object
+      required:
+      - status
+      title: ReadyResponse
+      description: Prontidão do serviço
+    ResolveRequest:
+      properties:
+        place_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Place Id
+          description: Lugar escolhido nas sugestões
+        query:
+          anyOf:
+          - type: string
+            minLength: 3
+          - type: 'null'
+          title: Query
+          description: Endereço em texto livre
+        session_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Token
+          description: Mesmo token de sessão usado nas sugestões
+        language:
+          type: string
+          title: Language
+          description: Idioma da resposta
+          default: pt-BR
+      type: object
+      title: ResolveRequest
+      description: Pedido de endereço final a partir de um lugar escolhido ou de um texto
+    ResolveResponse:
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+          description: Endereço estruturado com coordenadas
+        validation:
+          anyOf:
+          - $ref: '#/components/schemas/AddressValidation'
+          - type: 'null'
+          description: Validação do endereço; nulo se o serviço de validação estiver indisponível
+      type: object
+      required:
+      - address
+      title: ResolveResponse
+      description: Endereço final com coordenadas e o resultado da validação
+    ReverseGeocodeRequest:
+      properties:
+        latitude:
+          type: number
+          maximum: 90.0
+          minimum: -90.0
+          title: Latitude
+          description: Latitude do ponto
+        longitude:
+          type: number
+          maximum: 180.0
+          minimum: -180.0
+          title: Longitude
+          description: Longitude do ponto
+        language:
+          type: string
+          title: Language
+          description: Idioma da resposta
+          default: pt-BR
+      type: object
+      required:
+      - latitude
+      - longitude
+      title: ReverseGeocodeRequest
+      description: Pedido de endereço para uma coordenada
+    RoofSegment:
+      properties:
+        pitch_degrees:
+          type: number
+          title: Pitch Degrees
+          description: Inclinação do segmento em graus, em relação ao plano horizontal
+        azimuth_degrees:
+          type: number
+          title: Azimuth Degrees
+          description: Orientação (azimute) do segmento em graus, 0 = norte
+        area_m2:
+          type: number
+          title: Area M2
+          description: Área aproveitável do segmento, em metros quadrados
+      type: object
+      required:
+      - pitch_degrees
+      - azimuth_degrees
+      - area_m2
+      title: RoofSegment
+      description: Um segmento (plano) do telhado, com sua inclinação, orientação e área aproveitável.
+    SolarPanelConfig:
+      properties:
+        panels_count:
+          type: integer
+          title: Panels Count
+          description: Quantidade de painéis de referência nesta configuração
+        yearly_energy_dc_kwh:
+          type: number
+          title: Yearly Energy Dc Kwh
+          description: Energia DC anual estimada para esta configuração, em kWh, antes de perdas do sistema
+      type: object
+      required:
+      - panels_count
+      - yearly_energy_dc_kwh
+      title: SolarPanelConfig
+      description: 'Uma configuração candidata de arranjo de painéis, com a produção anual estimada para ela
+
+
+        A quantidade de painéis é de painéis de referência do Google (`panel_capacity_watts`);
+
+        quem usa outro painel precisa converter a energia pela potência.'
+    SolarViability:
+      properties:
+        imagery_date:
+          type: string
+          title: Imagery Date
+          description: Data da imageria usada na análise, no formato YYYY-MM-DD
+        usable_roof_area_m2:
+          type: number
+          title: Usable Roof Area M2
+          description: Área total do telhado utilizável para painéis, em metros quadrados
+        max_panel_count:
+          type: integer
+          title: Max Panel Count
+          description: Quantidade máxima de painéis solares que cabem no telhado
+        annual_sunshine_hours:
+          type: number
+          title: Annual Sunshine Hours
+          description: Máximo de horas de sol direto por ano estimadas para o telhado
+        carbon_offset_factor_kg_mwh:
+          type: number
+          title: Carbon Offset Factor Kg Mwh
+          description: Fator de compensação de carbono, em kg de CO2 por MWh gerado
+        roof_segments:
+          items:
+            $ref: '#/components/schemas/RoofSegment'
+          type: array
+          title: Roof Segments
+          description: Planos identificados no telhado, cada um com sua inclinação, orientação e área
+        panel_capacity_watts:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Panel Capacity Watts
+          description: Potência do painel de referência do Google, em watts (nulo se o Google não informa)
+        panel_width_meters:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Panel Width Meters
+          description: Largura do painel de referência, em metros (nulo se o Google não informa)
+        panel_height_meters:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Panel Height Meters
+          description: Altura do painel de referência, em metros (nulo se o Google não informa)
+        panel_configs:
+          items:
+            $ref: '#/components/schemas/SolarPanelConfig'
+          type: array
+          title: Panel Configs
+          description: Configurações candidatas de painéis e energia anual, na ordem do Google (vazia se não houver)
+      type: object
+      required:
+      - imagery_date
+      - usable_roof_area_m2
+      - max_panel_count
+      - annual_sunshine_hours
+      - carbon_offset_factor_kg_mwh
+      - roof_segments
+      title: SolarViability
+      description: Viabilidade solar do telhado mais próximo da coordenada consultada
+    Suggestion:
+      properties:
+        place_id:
+          type: string
+          title: Place Id
+          description: Identificador do lugar, para pedir os detalhes
+        description:
+          type: string
+          title: Description
+          description: Texto completo da sugestão
+        main_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Main Text
+          description: 'Parte principal (ex.: rua e número)'
+        secondary_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Secondary Text
+          description: 'Parte secundária (ex.: cidade e estado)'
+      type: object
+      required:
+      - place_id
+      - description
+      title: Suggestion
+      description: Uma sugestão de endereço
+    SuggestionsRequest:
+      properties:
+        query:
+          type: string
+          minLength: 3
+          title: Query
+          description: Texto digitado pelo usuário (mínimo de 3 caracteres)
+        session_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Token
+          description: Token da sessão de digitação; o mesmo deve ser enviado ao pedir os detalhes
+        language:
+          type: string
+          title: Language
+          description: Idioma das sugestões
+          default: pt-BR
+        country:
+          type: string
+          title: Country
+          description: País para restringir as sugestões (ISO 3166-1 alfa-2)
+          default: BR
+      type: object
+      required:
+      - query
+      title: SuggestionsRequest
+      description: Pedido de sugestões de endereço para um texto parcial
+    SuggestionsResponse:
+      properties:
+        suggestions:
+          items:
+            $ref: '#/components/schemas/Suggestion'
+          type: array
+          title: Suggestions
+          description: Sugestões (vazia se nada casar)
+      type: object
+      required:
+      - suggestions
+      title: SuggestionsResponse
+      description: Sugestões de endereço, da mais relevante para a menos
+    TimezoneResponse:
+      properties:
+        timezone_id:
+          type: string
+          title: Timezone Id
+          description: 'Identificador IANA do fuso (ex.: America/Manaus)'
+        utc_offset_seconds:
+          type: integer
+          title: Utc Offset Seconds
+          description: Deslocamento em relação ao UTC, em segundos, no instante consultado (positivo a leste)
+      type: object
+      required:
+      - timezone_id
+      - utc_offset_seconds
+      title: TimezoneResponse
+      description: Fuso horário de uma coordenada
+    TranslateRequest:
+      properties:
+        fields:
+          items:
+            $ref: '#/components/schemas/TranslationField'
+          type: array
+          maxItems: 128
+          minItems: 1
+          title: Fields
+          description: Campos de texto a traduzir (até 128 por pedido)
+        source_language:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Language
+          description: Idioma de origem (ISO 639-1). Omitido, é detectado automaticamente
+      type: object
+      required:
+      - fields
+      title: TranslateRequest
+      description: Pedido de tradução de campos de texto
+    TranslateResponse:
+      properties:
+        source_language:
+          type: string
+          title: Source Language
+          description: Idioma de origem detectado (ou informado)
+        translations:
+          items:
+            $ref: '#/components/schemas/TranslatedField'
+          type: array
+          title: Translations
+          description: Campos traduzidos pros outros idiomas suportados
+      type: object
+      required:
+      - source_language
+      - translations
+      title: TranslateResponse
+      description: Resultado da tradução dos campos
+    TranslatedField:
+      properties:
+        field_name:
+          type: string
+          title: Field Name
+          description: Nome do campo de origem
+        language:
+          type: string
+          title: Language
+          description: 'Idioma de destino (ISO 639-1: en/es/pt)'
+        value:
+          type: string
+          title: Value
+          description: Texto traduzido
+      type: object
+      required:
+      - field_name
+      - language
+      - value
+      title: TranslatedField
+      description: Um campo já traduzido para um dos idiomas suportados
+    TranslationField:
+      properties:
+        field_name:
+          type: string
+          title: Field Name
+          description: 'Nome do campo de origem (ex.: ''information'')'
+        text:
+          type: string
+          title: Text
+          description: Texto no idioma de origem
+      type: object
+      required:
+      - field_name
+      - text
+      title: TranslationField
+      description: Um campo de texto livre a ser traduzido
+    ValidateRequest:
+      properties:
+        address_lines:
+          items:
+            type: string
+          type: array
+          maxItems: 10
+          minItems: 1
+          title: Address Lines
+          description: Linhas do endereço (rua, número, complemento...)
+        postal_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postal Code
+          description: CEP, se conhecido
+        locality:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Locality
+          description: Cidade, se conhecida
+        administrative_area:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Administrative Area
+          description: UF, se conhecida
+        region_code:
+          type: string
+          title: Region Code
+          description: País (ISO 3166-1 alfa-2)
+          default: BR
+      type: object
+      required:
+      - address_lines
+      title: ValidateRequest
+      description: Pedido de validação de um endereço digitado à mão
+    ValidateResponse:
+      properties:
+        verdict:
+          type: string
+          enum:
+          - ok
+          - needs_review
+          - invalid
+          title: Verdict
+          description: 'ok: endereço completo e confirmado; needs_review: existe, mas há componentes não confirmados ou faltando;
+            invalid: não foi possível validar'
+        missing_components:
+          items:
+            type: string
+          type: array
+          title: Missing Components
+          description: 'Tipos de componente que faltam (ex.: street_number)'
+        unconfirmed_components:
+          items:
+            type: string
+          type: array
+          title: Unconfirmed Components
+          description: Tipos de componente que o Google não conseguiu confirmar
+        address:
+          anyOf:
+          - $ref: '#/components/schemas/Address'
+          - type: 'null'
+          description: Endereço normalizado com coordenadas (nulo se o Google não geocodificou)
+      type: object
+      required:
+      - verdict
+      title: ValidateResponse
+      description: Veredito da validação e a versão normalizada do endereço
+    ProblemDetail:
+      description: Corpo de todo erro HTTP do serviço, no contrato de erro da organização
+      properties:
+        type:
+          description: Sempre about:blank
+          examples:
+          - about:blank
+          title: Type
+          type: string
+        title:
+          description: O mesmo valor de errorCode
+          examples:
+          - NOT_FOUND
+          title: Title
+          type: string
+        status:
+          description: Código HTTP
+          examples:
+          - 404
+          title: Status
+          type: integer
+        errorCode:
+          description: Código estável do catálogo de erros
+          examples:
+          - NOT_FOUND
+          title: Errorcode
+          type: string
+        detail:
+          description: Explicação para quem depura, em português; o front não exibe
+          examples:
+          - Lugar não encontrado
+          title: Detail
+          type: string
+        instance:
+          description: Caminho da requisição
+          examples:
+          - /v1/address/places/ChIJ1
+          title: Instance
+          type: string
+        timestamp:
+          description: Instante do erro, em UTC
+          format: date-time
+          title: Timestamp
+          type: string
+        traceId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Id do trace, para cruzar com os logs
+          title: Traceid
+        errors:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ProblemFieldError'
+            type: array
+          - type: 'null'
+          default: null
+          description: Campos inválidos, só em validação
+          title: Errors
+      required:
+      - type
+      - title
+      - status
+      - errorCode
+      - detail
+      - instance
+      - timestamp
+      title: ProblemDetail
+      type: object
+    ProblemFieldError:
+      description: Um campo inválido de um erro de validação
+      properties:
+        field:
+          description: Caminho do campo inválido
+          examples:
+          - latitude
+          title: Field
+          type: string
+        errorCode:
+          description: Código estável do erro do campo
+          examples:
+          - VALIDATION_FAILED
+          title: Errorcode
+          type: string
+        detail:
+          description: Explicação para quem depura
+          examples:
+          - Input should be less than or equal to 90
+          title: Detail
+          type: string
+      required:
+      - field
+      - errorCode
+      - detail
+      title: ProblemFieldError
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceKey:
+      type: apiKey
+      in: header
+      name: X-Service-Key
+tags:
+- name: Endereços
+  description: Sugestão, detalhe, geocodificação, validação e resolução de endereços
+- name: Energia solar
+  description: Viabilidade solar de telhados pela Solar API
+- name: Geografia
+  description: Fuso horário de coordenadas, calculado sem API externa
+- name: Saúde
+  description: Rotas de vivo e pronto da plataforma
+- name: Tradução
+  description: Detecção de idioma e tradução de campos de texto
+security:
+- bearerAuth: []
