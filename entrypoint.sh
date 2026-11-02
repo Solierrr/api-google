@@ -9,12 +9,12 @@ if [ -n "${INFISICAL_CLIENT_ID:-}" ] && [ -n "${INFISICAL_CLIENT_SECRET:-}" ]; t
     --client-secret="$INFISICAL_CLIENT_SECRET" \
     --silent --plain)
 
-  # Uma execução por pasta: o registry só enxerga /llm, /google e /service-urls, nunca banco ou cache.
+  # Uma execução por pasta: o serviço só enxerga /google, /service-urls e /service-keys, nunca banco ou cache.
   FLAGS="--token=$INFISICAL_TOKEN --projectId=2296d19c-5f3b-41e1-afa3-fcde39966a71 --env=${INFISICAL_ENV:-qa}"
 
-  exec infisical run $FLAGS --path=/llm -- \
-    infisical run $FLAGS --path=/google -- \
+  exec infisical run $FLAGS --path=/google -- \
     infisical run $FLAGS --path=/service-urls -- \
+    infisical run $FLAGS --path=/service-keys -- \
     sh -c 'export GOOGLE_KEY_MAPS="${GOOGLE_KEY_MAPS:-$GOOGLE_MAPS_API_KEY}" \
       GOOGLE_KEY_TRANSLATION="${GOOGLE_KEY_TRANSLATION:-$GOOGLE_TRANSLATE_API_KEY}" \
       AUTH_BASE_URL="${AUTH_BASE_URL:-$AUTH_SERVICE_URL}"; \

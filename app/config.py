@@ -1,15 +1,6 @@
-"""Configuração central do google-registry, carregada de variáveis de ambiente/`.env`
-Concentra credenciais Google e parâmetros de infraestrutura
-Cada adapter Google recebe suas credenciais por está classe
-nenhum outro módulo lê variável de ambiente diretamente
-"""
-
-import os
-from collections.abc import Mapping
 from functools import lru_cache
 
-from dotenv import dotenv_values
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,35 +21,55 @@ class Settings(BaseSettings):
     google_key_translation: str = Field(..., repr=False)
 
     # OAuth 2.0 Authorization Code por técnico
-    google_calendar_oauth_client_id: str | None = Field(None, repr=False)
-    google_calendar_oauth_client_secret: str | None = Field(None, repr=False)
-    google_calendar_oauth_redirect_uri: str | None = None
+    google_calendar_oauth_client_id: str = Field(..., repr=False)
+    google_calendar_oauth_client_secret: str = Field(..., repr=False)
+    google_calendar_oauth_redirect_uri: str
 
     # Validação do JWT RS256 de usuário
     jwt_jwks_url: str = "http://localhost:8081/.well-known/jwks.json"
     jwt_issuer: str = "solaria-auth"
 
-    # Token compartilhado dos serviços que consomem /v1/llm/* (ausente: as rotas respondem 503)
-    registry_consumer_token: str | None = Field(None, repr=False)
-
     # repos Solier chamados via HTTP
     auth_base_url: str
 
-    # Verificação de validade das chaves de LLM em segundo plano (0 desliga)
-    llm_probe_interval_seconds: int = 300
+    # X-Service-Key de cada serviço chamador aceito (vazio = chamador recusado)
+    service_key_api_core: str | None = Field(default=None, repr=False)
+    service_key_ai_geographic: str | None = Field(default=None, repr=False)
+
+    @field_validator("service_key_api_core", "service_key_ai_geographic", mode="before")
+    @classmethod
+    def _validate_service_key(cls, value: str | None) -> str | None:
+        """Chave vazia vale como ausente; chave curta impede a partida"""
+        if value is None or not str(value).strip():
+            return None
+        if len(str(value).strip()) < 32:
+            raise ValueError("a chave de serviço precisa ter no mínimo 32 caracteres")
+        return str(value).strip()
+
+    @property
+    def service_keys(self) -> dict[str, str | None]:
+        """Chave de cada chamador aceito, pelo nome do repositório"""
+        return {"api-core": self.service_key_api_core, "ai-geographic": self.service_key_ai_geographic}
+
+
+class WebSettings(BaseSettings):
+    """Configuração da camada web, lida na importação do app e sem segredos (a exportação do contrato não tem `.env`)"""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # Swagger em /docs e contrato em /openapi.json; desligado em PROD
+    docs_enabled: bool = True
+
+    # Origens aceitas pelo CORS, separadas por vírgula (no QA inclui o web-sandbox)
+    cors_allowed_origins: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Origens do CORS sem espaços nem itens vazios"""
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
 
 
 @lru_cache
 def get_settings() -> Settings:
     """Retorna a instância única de `Settings` para o processo atual"""
     return Settings()
-
-
-def get_llm_environ() -> Mapping[str, str]:
-    """Variáveis de ambiente de onde as chaves de LLM são lidas (`<PROVEDOR>_API_KEY_<N>`)
-
-    As variáveis do processo valem mais que as do arquivo `.env`; como o conjunto de chaves é variável,
-    elas não são campos de `Settings`
-    """
-    file_values = {name: value for name, value in dotenv_values(".env").items() if value is not None}
-    return {**file_values, **os.environ}
