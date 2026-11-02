@@ -12,7 +12,7 @@
 | QA | [Render](https://google-registry.onrender.com) | URL declarada no contrato OpenAPI. |
 | PROD | Acesso interno no GKE | `ClusterIP`, sem Ingress próprio |
 
-Os procedimentos comuns estão em [QA no Render](https://github.com/Solierrr/docs-warehouse/blob/main/readme/deploy/QA_RENDER.md) e [PROD no GKE](https://github.com/Solierrr/docs-warehouse/blob/main/readme/deploy/PROD_GKE_ARGOCD.md). O [Dockerfile](https://github.com/Solierrr/api-google/blob/main/Dockerfile) instala o pacote e inicia Uvicorn na porta 8000.
+Os procedimentos comuns estão em [QA no Render](https://github.com/Solierrr/docs-warehouse/blob/main/readme/deploy/QA_RENDER.md) e [PROD no GKE](https://github.com/Solierrr/docs-warehouse/blob/main/readme/deploy/PROD_GKE_ARGOCD.md). O [Dockerfile](https://github.com/Solierrr/api-google/blob/main/Dockerfile) instala o pacote e inicia o Uvicorn na porta 8000 pelo [`entrypoint.sh`](https://github.com/Solierrr/api-google/blob/main/entrypoint.sh), que, com as credenciais do Infisical presentes, carrega as pastas `/google`, `/service-urls` e `/service-keys` antes da partida, e sem elas inicia direto com as variáveis do ambiente.
 
 ## Configuração específica
 
