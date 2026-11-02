@@ -109,3 +109,45 @@ def test_empty_service_key_counts_as_absent(monkeypatch):
     monkeypatch.setenv("SERVICE_KEY_API_CORE", "")
 
     assert Settings().service_keys["api-core"] is None
+
+
+GEOCODE = "https://maps.googleapis.com/maps/api/geocode/json"
+GEOCODE_OK = {
+    "status": "OK",
+    "results": [
+        {
+            "formatted_address": "Av. Paulista, 1000",
+            "geometry": {"location": {"lat": -23.5, "lng": -46.6}, "location_type": "ROOFTOP"},
+        }
+    ],
+}
+
+
+def test_internal_geocode_without_key_returns_401(client):
+    response = client.post("/internal/address/geocode", json={"address": "Av. Paulista, 1000"})
+
+    assert response.status_code == 401
+
+
+def test_internal_geocode_rejects_a_caller_that_is_not_api_core(client):
+    response = client.post(
+        "/internal/address/geocode",
+        json={"address": "Av. Paulista, 1000"},
+        headers={"X-Service-Key": AI_GEOGRAPHIC_KEY},
+    )
+
+    assert response.status_code == 403
+
+
+@respx.mock
+def test_api_core_geocodes_with_its_service_key(client):
+    respx.get(GEOCODE).mock(return_value=httpx.Response(200, json=GEOCODE_OK))
+
+    response = client.post(
+        "/internal/address/geocode",
+        json={"address": "Av. Paulista, 1000"},
+        headers={"X-Service-Key": API_CORE_KEY},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["latitude"] == -23.5

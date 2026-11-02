@@ -31,7 +31,6 @@ def _get_service(
         401, 403, 404, 422, 502, 503, 504, descriptions={404: "Sem cobertura de dados solares para a coordenada"}
     ),
 )
-@router.get("/v1/solar/roof-viability", include_in_schema=False, deprecated=True)
 async def get_roof_viability(
     latitude: Annotated[float, Query(ge=-90, le=90, description="Latitude do ponto a consultar")],
     longitude: Annotated[float, Query(ge=-180, le=180, description="Longitude do ponto a consultar")],
@@ -40,7 +39,6 @@ async def get_roof_viability(
     """Consulta a viabilidade solar do telhado mais próximo da coordenada informada.
 
     Toda chamada consulta a Solar API do Google.
-    `/v1/solar/roof-viability` fica só até o ai-geographic passar a chamar `/internal/solar/roof-viability`.
 
     Args:
         latitude: latitude do ponto a consultar.

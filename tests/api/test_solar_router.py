@@ -1,6 +1,7 @@
 import httpx
 import respx
 
+HEADERS = {"X-Service-Key": "test-service-key-ai-geographic-00000"}
 FIND_CLOSEST = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 PAYLOAD = {
     "imageryDate": {"year": 2024, "month": 3, "day": 5},
@@ -18,14 +19,16 @@ PAYLOAD = {
 def test_roof_viability_returns_viability(client):
     respx.get(FIND_CLOSEST).mock(return_value=httpx.Response(200, json=PAYLOAD))
 
-    response = client.get("/v1/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6})
+    response = client.get(
+        "/internal/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6}, headers=HEADERS
+    )
 
     assert response.status_code == 200
     assert response.json()["max_panel_count"] == 20
 
 
 def test_roof_viability_rejects_out_of_range_latitude(client):
-    response = client.get("/v1/solar/roof-viability", params={"latitude": 100, "longitude": 0})
+    response = client.get("/internal/solar/roof-viability", params={"latitude": 100, "longitude": 0}, headers=HEADERS)
 
     assert response.status_code == 422
 
@@ -34,7 +37,9 @@ def test_roof_viability_rejects_out_of_range_latitude(client):
 def test_roof_viability_returns_404_without_coverage(client):
     respx.get(FIND_CLOSEST).mock(return_value=httpx.Response(404))
 
-    response = client.get("/v1/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6})
+    response = client.get(
+        "/internal/solar/roof-viability", params={"latitude": -23.5, "longitude": -46.6}, headers=HEADERS
+    )
 
     assert response.status_code == 404
     assert response.json()["errorCode"] == "NOT_FOUND"
