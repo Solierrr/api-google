@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+
+PORT="${PORT:-8000}"
+
+if [ -n "${INFISICAL_CLIENT_ID:-}" ] && [ -n "${INFISICAL_CLIENT_SECRET:-}" ]; then
+  INFISICAL_TOKEN=$(infisical login --method=universal-auth \
+    --client-id="$INFISICAL_CLIENT_ID" \
+    --client-secret="$INFISICAL_CLIENT_SECRET" \
+    --silent --plain)
+
+  # Uma execução por pasta: o serviço só enxerga /google, /service-urls e /service-keys, nunca banco ou cache.
+  FLAGS="--token=$INFISICAL_TOKEN --projectId=2296d19c-5f3b-41e1-afa3-fcde39966a71 --env=${INFISICAL_ENV:-qa}"
+
+  exec infisical run $FLAGS --path=/google -- \
+    infisical run $FLAGS --path=/service-urls -- \
+    infisical run $FLAGS --path=/service-keys -- \
+    sh -c 'export GOOGLE_KEY_MAPS="${GOOGLE_KEY_MAPS:-$GOOGLE_MAPS_API_KEY}" \
+      GOOGLE_KEY_TRANSLATION="${GOOGLE_KEY_TRANSLATION:-$GOOGLE_TRANSLATE_API_KEY}" \
+      AUTH_BASE_URL="${AUTH_BASE_URL:-$AUTH_SERVICE_URL}"; \
+      exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"'
+fi
+
+exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
