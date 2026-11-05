@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # repos Solier chamados via HTTP
     auth_base_url: str
-    # Enviado ao api-auth em `X-Internal-Token` (`/internal/**`); ausente: o api-auth recusa as chamadas com 401
+    # Enviado ao api-auth em `X-Service-Key` (`/internal/**`); ausente: o api-auth recusa as chamadas com 401
     internal_api_token: str | None = Field(None, repr=False)
 
     # X-Service-Key de cada serviço chamador aceito (vazio = chamador recusado)

@@ -72,7 +72,7 @@ def test_callback_saves_the_tokens_in_api_auth_with_the_internal_token(client):
     assert response.json() == {"status": "connected"}
     request = save.calls.last.request
     assert json.loads(request.content) == {"accessToken": "at", "refreshToken": "rt"}
-    assert request.headers["X-Internal-Token"] == "test-internal-token"
+    assert request.headers["X-Service-Key"] == "test-internal-token"
 
 
 @respx.mock(assert_all_called=False)

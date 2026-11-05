@@ -11,11 +11,11 @@ URL = "http://auth.test/internal/ping"
 @respx.mock
 async def test_default_headers_are_sent_on_every_request():
     route = respx.get(URL).mock(return_value=httpx.Response(200))
-    client = InternalHttpClient(base_url="http://auth.test", service="auth", headers={"X-Internal-Token": "segredo"})
+    client = InternalHttpClient(base_url="http://auth.test", service="auth", headers={"X-Service-Key": "segredo"})
 
     await client.request("GET", "/internal/ping")
 
-    assert route.calls.last.request.headers["X-Internal-Token"] == "segredo"
+    assert route.calls.last.request.headers["X-Service-Key"] == "segredo"
     await client.aclose()
 
 
@@ -26,5 +26,5 @@ async def test_no_internal_token_header_when_none_is_configured():
 
     await client.request("GET", "/internal/ping")
 
-    assert "X-Internal-Token" not in route.calls.last.request.headers
+    assert "X-Service-Key" not in route.calls.last.request.headers
     await client.aclose()

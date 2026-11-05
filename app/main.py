@@ -43,7 +43,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         "auth": InternalHttpClient(
             base_url=settings.auth_base_url,
             service="auth",
-            headers={"X-Internal-Token": settings.internal_api_token} if settings.internal_api_token else None,
+            headers={"X-Service-Key": settings.internal_api_token} if settings.internal_api_token else None,
         ),
     }
 
