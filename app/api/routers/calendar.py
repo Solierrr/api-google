@@ -8,6 +8,7 @@ from pydantic import AwareDatetime
 from app.api.dependencies import get_calendar_token_client, get_http_client
 from app.application.calendar.service import CalendarService, InvalidPeriodError
 from app.config import get_settings
+from app.infrastructure.auth.bearer_auth import require_authenticated_user
 from app.infrastructure.calendar.state import CalendarStateSigner
 from app.infrastructure.google.calendar.adapter import CalendarAdapter
 from app.infrastructure.google.calendar.oauth_adapter import CalendarOAuthAdapter, OAuthClientConfig
@@ -23,7 +24,9 @@ from app.schemas.calendar import (
     EventUpdate,
 )
 
-router = APIRouter(prefix="/v1/calendar", tags=["calendar"])
+router = APIRouter(prefix="/v1/calendar", tags=["calendar"], dependencies=[Depends(require_authenticated_user)])
+# O retorno do Google chega sem token de usuário; o `state` assinado é a prova
+callback_router = APIRouter(prefix="/v1/calendar", tags=["calendar"])
 
 TechnicianId = Annotated[str, Path(min_length=1, description="Identificador do técnico")]
 PeriodStart = Annotated[AwareDatetime, Query(alias="from", description="Início do período (ISO 8601 com fuso)")]
@@ -75,7 +78,7 @@ async def connect(technician_id: Annotated[str, Query(min_length=1)], service: S
     return service.connect(technician_id)
 
 
-@router.get("/callback", summary="Retorno do consentimento do Google")
+@callback_router.get("/callback", summary="Retorno do consentimento do Google")
 async def callback(
     state: Annotated[str, Query(description="`state` devolvido pelo Google")],
     service: Service,
