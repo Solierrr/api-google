@@ -46,8 +46,16 @@ def configure_logging(level: str = "INFO") -> None:
     root.addHandler(_otel_handler)
 
 
+class CalendarCallbackFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(value.split("?", 1)[0] if isinstance(value, str) and "/v1/calendar/callback?" in value else value for value in record.args)
+        return True
+
+
 def attach_otel_to_uvicorn() -> None:
     """Anexa o OTEL handler aos loggers do uvicorn (request/access logs -> OTLP)"""
+    logging.getLogger("uvicorn.access").addFilter(CalendarCallbackFilter())
     if _otel_handler is None:
         return
     for name in _UVICORN_LOGGERS:

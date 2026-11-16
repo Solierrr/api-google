@@ -21,9 +21,12 @@ class Settings(BaseSettings):
     google_key_translation: str = Field(..., repr=False)
 
     # OAuth 2.0 Authorization Code por técnico
-    google_calendar_oauth_client_id: str = Field(..., repr=False)
-    google_calendar_oauth_client_secret: str = Field(..., repr=False)
-    google_calendar_oauth_redirect_uri: str
+    google_calendar_oauth_client_id: str | None = Field(default=None, repr=False)
+    google_calendar_oauth_client_secret: str | None = Field(default=None, repr=False)
+    google_calendar_oauth_redirect_uri: str | None = None
+    calendar_state_secret: str | None = Field(default=None, repr=False)
+    service_key_google_registry: str | None = Field(default=None, repr=False)
+    calendar_mobile_return_uri: str = "solaria-qa://calendar/callback"
 
     # Validação do JWT RS256 de usuário
     jwt_jwks_url: str = "http://localhost:8081/.well-known/jwks.json"
@@ -36,7 +39,7 @@ class Settings(BaseSettings):
     service_key_api_core: str | None = Field(default=None, repr=False)
     service_key_ai_geographic: str | None = Field(default=None, repr=False)
 
-    @field_validator("service_key_api_core", "service_key_ai_geographic", mode="before")
+    @field_validator("service_key_api_core", "service_key_ai_geographic", "service_key_google_registry", "calendar_state_secret", mode="before")
     @classmethod
     def _validate_service_key(cls, value: str | None) -> str | None:
         """Chave vazia vale como ausente; chave curta impede a partida"""
@@ -45,6 +48,13 @@ class Settings(BaseSettings):
         if len(str(value).strip()) < 32:
             raise ValueError("a chave de serviço precisa ter no mínimo 32 caracteres")
         return str(value).strip()
+
+    @field_validator("calendar_mobile_return_uri")
+    @classmethod
+    def _validate_calendar_return(cls, value: str) -> str:
+        if value not in ("solaria-qa://calendar/callback", "solaria://calendar/callback"):
+            raise ValueError("retorno do Calendar precisa apontar para o app Solaria")
+        return value
 
     @property
     def service_keys(self) -> dict[str, str | None]:

@@ -17,6 +17,312 @@ servers:
 - url: http://localhost:8000
   description: Local
 paths:
+  /v1/calendar/me/connection:
+    get:
+      tags:
+      - Calendar
+      summary: Connection
+      operationId: getOwnCalendarConnection
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarConnection'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - VALIDATION_FAILED
+      - INTERNAL_ERROR
+    post:
+      tags:
+      - Calendar
+      summary: Connect
+      operationId: connectOwnCalendar
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: calendar_oauth
+          title: ' Capability'
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectResponse'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - VALIDATION_FAILED
+      - INTERNAL_ERROR
+    delete:
+      tags:
+      - Calendar
+      summary: Disconnect
+      operationId: disconnectOwnCalendar
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: calendar_oauth
+          title: ' Capability'
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - VALIDATION_FAILED
+      - INTERNAL_ERROR
+  /v1/calendar/me/events:
+    get:
+      tags:
+      - Calendar
+      summary: Events
+      operationId: listOwnCalendarEvents
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: From
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: To
+      - name: page_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Page Token
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: calendar_oauth
+          title: ' Capability'
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - VALIDATION_FAILED
+      - INTERNAL_ERROR
+    post:
+      tags:
+      - Calendar
+      summary: Export
+      operationId: exportOwnCalendarActivity
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: calendar_oauth
+          title: ' Capability'
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityExport'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INTERNAL_ERROR
+  /v1/calendar/callback:
+    get:
+      tags:
+      - Calendar
+      summary: Callback
+      operationId: completeCalendarAuthorization
+      parameters:
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+          title: State
+      - name: code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+      - name: error
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+      - name: _capability
+        in: query
+        required: false
+        schema:
+          type: string
+          default: calendar_oauth
+          title: ' Capability'
+      - name: _service
+        in: query
+        required: false
+        schema:
+          type: string
+          default: auth
+          title: ' Service'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Corpo ou parâmetro inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: Erro interno inesperado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security: []
+      x-error-codes:
+      - VALIDATION_FAILED
+      - INTERNAL_ERROR
   /health:
     get:
       tags:
@@ -835,6 +1141,53 @@ paths:
       - INTERNAL_ERROR
 components:
   schemas:
+    ActivityExport:
+      properties:
+        title:
+          type: string
+          minLength: 1
+          title: Title
+          description: Título do evento
+        start:
+          type: string
+          format: date-time
+          title: Start
+          description: Início (ISO 8601 com fuso)
+        end:
+          type: string
+          format: date-time
+          title: End
+          description: Fim (ISO 8601 com fuso)
+        time_zone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Time Zone
+          description: 'Fuso IANA do evento (ex.: America/Sao_Paulo)'
+        location:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Location
+          description: Local
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Descrição
+        source_id:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Source Id
+      type: object
+      required:
+      - title
+      - start
+      - end
+      - source_id
+      title: ActivityExport
     Address:
       properties:
         place_id:
@@ -967,6 +1320,103 @@ components:
       - verdict
       title: AddressValidation
       description: Resultado da validação de um endereço
+    CalendarConnection:
+      properties:
+        configured:
+          type: boolean
+          title: Configured
+        connected:
+          type: boolean
+          title: Connected
+          default: false
+        reconnect_required:
+          type: boolean
+          title: Reconnect Required
+          default: false
+      type: object
+      required:
+      - configured
+      title: CalendarConnection
+    ConnectResponse:
+      properties:
+        authorization_url:
+          type: string
+          title: Authorization Url
+          description: URL para onde levar o técnico autorizar o acesso ao Calendar
+      type: object
+      required:
+      - authorization_url
+      title: ConnectResponse
+    Event:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+          description: Identificador do evento no Google
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+          description: Título
+        start:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Start
+          description: 'Início como o Google informa: ISO 8601 com fuso, ou só a data em eventos de dia inteiro'
+        end:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: End
+          description: Fim, no mesmo formato de `start`
+        time_zone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Time Zone
+          description: Fuso IANA do evento, quando informado
+        location:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Location
+          description: Local
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+          description: Estado no Google (confirmed, tentative, cancelled)
+        html_link:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Html Link
+          description: Link do evento na interface do Google Calendar
+      type: object
+      required:
+      - event_id
+      title: Event
+    EventList:
+      properties:
+        events:
+          items:
+            $ref: '#/components/schemas/Event'
+          type: array
+          title: Events
+          description: Eventos do período, ordenados por início
+        next_page_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Page Token
+          description: Token da próxima página (omitido na última)
+      type: object
+      required:
+      - events
+      title: EventList
     GeocodeRequest:
       properties:
         address:
@@ -1529,6 +1979,8 @@ components:
       in: header
       name: X-Service-Key
 tags:
+- name: Calendar
+  description: Agenda pessoal Google e exportação explícita de atividades
 - name: Endereços
   description: Sugestão, detalhe, geocodificação, validação e resolução de endereços
 - name: Energia solar

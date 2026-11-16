@@ -158,3 +158,21 @@ class InternalServiceUpstreamException(InternalServiceException):
 
     http_status = 502
     error_type = "upstream"
+
+
+class CalendarConsentDeniedException(GoogleProviderException):
+    http_status = 409
+    error_type = 'consent_denied'
+    error_code = 'CONFLICT'
+
+    def __init__(self, message: str, *, technician_id: str) -> None:
+        super().__init__(message, capability='calendar')
+        self.technician_id = technician_id
+
+    def details(self) -> dict[str, Any]:
+        return {'technician_id': self.technician_id}
+
+
+class CalendarNotConfiguredException(GoogleProviderException):
+    http_status = 503
+    error_type = 'not_configured'

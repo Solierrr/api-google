@@ -8,7 +8,7 @@ def test_public_contract_hides_internal_routes_and_empty_tags():
     assert contract["info"]["title"] == "Solaria — api-google"
     assert contract["servers"][0]["description"] == "QA"
     assert not [path for path in contract["paths"] if path.startswith("/internal/")]
-    assert {tag["name"] for tag in contract["tags"]} == {"Endereços", "Geografia", "Saúde"}
+    assert {tag["name"] for tag in contract["tags"]} == {"Endereços", "Geografia", "Saúde", "Calendar"}
     assert contract["security"] == [{"bearerAuth": []}]
 
 

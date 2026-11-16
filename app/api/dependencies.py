@@ -65,4 +65,5 @@ def get_calendar_token_client(
     http_client: Annotated[InternalHttpClient, Depends(get_internal_http_client("auth"))],
 ) -> AuthCalendarTokenClient:
     """Cliente dos tokens OAuth do Calendar por técnico, ligado ao `InternalHttpClient` do api-auth"""
-    return AuthCalendarTokenClient(http_client)
+    from app.config import get_settings
+    return AuthCalendarTokenClient(http_client, get_settings().service_key_google_registry)

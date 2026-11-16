@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import quote
 
 from app.exceptions import (
@@ -22,15 +22,16 @@ _BASE_PATH = "/internal/technicians"
 class TechnicianTokens:
     """Par de tokens OAuth do Calendar de um técnico"""
 
-    access_token: str
-    refresh_token: str
+    access_token: str = field(repr=False)
+    refresh_token: str = field(repr=False)
     status: str
 
 
 class AuthCalendarTokenClient:
     """Consulta e atualiza, via `api-auth`, os tokens OAuth do Calendar de cada técnico"""
 
-    def __init__(self, http_client: InternalHttpClient) -> None:
+    def __init__(self, http_client: InternalHttpClient, service_key: str | None = None) -> None:
+        self._headers = {"X-Service-Key": service_key} if service_key else {}
         self._http_client = http_client
 
     def _token_path(self, technician_id: str) -> str:
@@ -43,7 +44,7 @@ class AuthCalendarTokenClient:
             InternalServiceException: api-auth indisponível ou respondeu fora do contrato
         """
         try:
-            response = await self._http_client.request("GET", self._token_path(technician_id))
+            response = await self._http_client.request("GET", self._token_path(technician_id), headers=self._headers)
         except InternalServiceNotFoundException:
             return None
         body = response.json()
@@ -65,19 +66,19 @@ class AuthCalendarTokenClient:
         await self._http_client.request(
             "PUT",
             self._token_path(technician_id),
-            json={"accessToken": access_token, "refreshToken": refresh_token},
+            json={"accessToken": access_token, "refreshToken": refresh_token}, headers=self._headers,
         )
 
     async def disconnect(self, technician_id: str) -> None:
         """Marca a conexão do técnico como desconectada em `api-auth`"""
         try:
-            await self._http_client.request("DELETE", self._token_path(technician_id))
+            await self._http_client.request("DELETE", self._token_path(technician_id), headers=self._headers)
         except InternalServiceNotFoundException:
             _log.info("Técnico %s não tinha conexão Google registrada | desconexão é no-op", technician_id)
 
     async def mark_revoked(self, technician_id: str) -> None:
         """Marca a conexão do técnico como revogada em `api-auth`"""
         try:
-            await self._http_client.request("PATCH", f"{self._token_path(technician_id)}/revoke", retry=True)
+            await self._http_client.request("PATCH", f"{self._token_path(technician_id)}/revoke", retry=True, headers=self._headers)
         except InternalServiceException:
             _log.warning("Falha ao marcar tokens do técnico %s como revogados em api-auth", technician_id)

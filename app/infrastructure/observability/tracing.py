@@ -40,7 +40,7 @@ async def async_redact_url_in_span(span: trace.Span, request: Any) -> None:
 
 def instrument_fastapi(app: FastAPI) -> None:
     """Instrumenta a aplicação FastAPI"""
-    FastAPIInstrumentor.instrument_app(app)
+    FastAPIInstrumentor.instrument_app(app, excluded_urls=r"/v1/calendar/callback")
 
 
 def configure_tracing(app: FastAPI) -> None:

@@ -4,7 +4,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import address, geo, health, i18n, solar
+from app.api.routers import address, calendar, geo, health, i18n, solar
 from app.config import WebSettings, get_settings
 from app.exceptions.handlers import register_exception_handlers
 from app.infrastructure.http.google_http_client import GoogleHttpClient
@@ -22,6 +22,8 @@ _GOOGLE_BASE_URLS = {
     "places": "https://places.googleapis.com",
     "solar": "https://solar.googleapis.com",
     "translation": "https://translation.googleapis.com",
+    "calendar": "https://www.googleapis.com",
+    "calendar_oauth": "https://oauth2.googleapis.com",
 }
 
 
@@ -67,6 +69,7 @@ app = FastAPI(
         {"url": "http://localhost:8000", "description": "Local"},
     ],
     openapi_tags=[
+        {"name": "Calendar", "description": "Agenda pessoal Google e exportação explícita de atividades"},
         {"name": "Endereços", "description": "Sugestão, detalhe, geocodificação, validação e resolução de endereços"},
         {"name": "Energia solar", "description": "Viabilidade solar de telhados pela Solar API"},
         {"name": "Geografia", "description": "Fuso horário de coordenadas, calculado sem API externa"},
@@ -96,6 +99,8 @@ install_openapi(app)
 instrument_fastapi(app)
 register_exception_handlers(app)
 
+app.include_router(calendar.router)
+app.include_router(calendar.public_router)
 app.include_router(health.router)
 app.include_router(address.router)
 app.include_router(solar.router)
